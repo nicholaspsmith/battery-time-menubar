@@ -1,100 +1,79 @@
-# Battery time-remaining menu-bar item — design
+# Battery time-remaining menu-bar item — design (as built)
 
-**Date:** 2026-06-17
-**Status:** approved design, pending implementation
+**Date:** 2026-06-17, revised 2026-06-18
+**Status:** implemented
+
+> This records the final design. It evolved well beyond the original one-line
+> brief through iteration; see the git history for the path.
 
 ## Goal
 
-Show the estimated battery time remaining as a bare `H:MM` (e.g. `1:52`) in the
-macOS menu bar, near the native battery icon. macOS removed the always-visible
-"time remaining" menu-bar display in Sierra (2016), so this is restored via a
-small SwiftBar plugin.
+Restore an estimated battery **time remaining** to the macOS menu bar (Apple
+removed the always-visible estimate in Sierra, 2016), with a state icon, a
+details dropdown, and updates that feel as immediate as the native battery icon.
 
-## Approach
+## Architecture
 
-A single shell-script SwiftBar plugin. No new app, no assets. Reuses the
-existing SwiftBar setup (same folder as `vpn-dns-control.5s.sh`).
+A SwiftBar plugin plus a launchd watcher, in a dedicated repo at
+`~/Code/battery-time-menubar`, symlinked into `~/.config/SwiftBar/`.
 
-- **File:** `~/.config/SwiftBar/battery-time.30s.sh`
-- **Refresh:** every 30s (the `.30s.` in the filename). The macOS estimate only
-  updates roughly once a minute, so 30s is ample and cheap.
-- **Data source:** `pmset -g batt`.
-- Placed directly in `~/.config/SwiftBar/` — this is a plugin, so it does not
-  violate the "only plugins live here" rule.
+- `battery-time.5s.sh` — the plugin. Parses `pmset -g batt`, prints the menu-bar
+  title and a dropdown. Refreshed in place by SwiftBar every 5s.
+- `power-watch.sh` — a launchd agent that listens to `pmset -g pslog` and, on
+  each AC plug/unplug, calls `open swiftbar://refreshallplugins` for an instant
+  in-place refresh.
 
-## Behavior
+## Menu-bar title
 
-Branch on the battery state word, then extract the `H:MM` token.
+| Power state | Title |
+| --- | --- |
+| On battery, has estimate | `3:14` (time to empty) |
+| On battery, no estimate | `--:--` |
+| Charging, has estimate | bolt + `1:20` (time to full) |
+| Charged / plugged-in / not-charging | bolt only |
 
-| State (`pmset` state word)                        | Menu bar shows        |
-| ------------------------------------------------- | --------------------- |
-| `discharging`, has estimate                       | `1:52` (time to empty) |
-| `charging`, has estimate                          | `1:20` (time to full)  |
-| No estimate — `charged`, AC hold/`not charging`, or `(no estimate)` while calculating | *(prints nothing → item hidden)* |
+- The bolt is SF Symbol `bolt.fill`, embedded **inline** in the title
+  (`:bolt.fill:`) and sized with `sfsize=9`; the digits use `size=11` to match
+  the native battery percentage. Inline embedding is what `sfsize` controls — a
+  symbol set via the `sfimage=` parameter ignores `sfsize`.
+- A meaningful ETA exists only while `discharging` or `charging`; `charged`
+  reports a bogus `0:00 remaining`, so the ETA is gated on state.
+- The title is **never empty** — always at least the bolt or `--:--`. This is
+  what keeps the item from disappearing and being re-added to Ice's hidden
+  section.
 
-Minimal by request: no glyphs, no percentage, no dropdown menu — only the
-`H:MM` number. When there is no estimate, the script prints nothing, so SwiftBar
-renders an empty (effectively hidden) item. This means the item appears and
-disappears with charge state; that's the accepted tradeoff for the cleanest look.
+## Dropdown
 
-## Parsing logic
-
-1. Read `pmset -g batt` (or a fixture via `PMSET_FIXTURE` for testing).
-2. Take the `InternalBattery` line. If absent (e.g. no battery), print nothing.
-3. If the state is `discharging` or `charging`, extract the first
-   `[0-9]{1,2}:[0-9]{2}` token and print it; otherwise print nothing.
-4. The "has a time token" guard naturally handles every no-estimate case
-   (`(no estimate)`, `not charging`, `charged`) by printing nothing.
-
-Note: a `*charging*` substring match also matches `discharging` and
-`not charging`. That's harmless here — `discharging` wants the same time
-output, and `not charging` carries no time token so it prints nothing.
-
-### Reference implementation
-
-```bash
-#!/usr/bin/env bash
-# battery-time.30s.sh
-# SwiftBar plugin: estimated battery time remaining as H:MM.
-# Shows time-to-empty while discharging, time-to-full while charging.
-# Prints nothing (item hidden) when macOS has no estimate.
-
-export PATH="/usr/bin:/bin:$PATH"
-
-batt="${PMSET_FIXTURE:-$(pmset -g batt)}"
-line=$(printf '%s\n' "$batt" | grep 'InternalBattery')
-
-case "$line" in
-  *discharging*|*charging*)
-    time=$(printf '%s\n' "$line" | grep -Eo '[0-9]{1,2}:[0-9]{2}' | head -n1)
-    [ -n "$time" ] && printf '%s\n' "$time"
-    ;;
-esac
+```
+Battery: 72%
+3 hr 14 min until empty           # or "Charging - 1 hr 20 min until full", "Fully charged", ...
+---
+Open Battery Settings...          # shell=/usr/bin/open param1=<url> terminal=false
 ```
 
-## Positioning
+Battery Settings URL: `x-apple.systempreferences:com.apple.Battery-Settings.extension`
+(the `PowerPreferences.appex` pane on macOS 26; identifier verified against the
+System Settings binary).
 
-After SwiftBar loads the plugin, ⌘-drag the item to sit just left of the native
-battery icon. macOS will not allow a third-party item *inside* the system
-Control Center cluster, but immediately beside it is fine.
+## Updates / Ice positioning
+
+- 5s in-place poll handles estimate drift.
+- `power-watch.sh` (launchd KeepAlive agent) gives instant plug/unplug response
+  by triggering the same in-place refresh.
+- A SwiftBar **streamable** plugin was tried for event-driven updates and
+  rejected: its `~~~` frame reset re-adds the status item, which Ice treats as a
+  new item and moves to the hidden section on every update. In-place refresh
+  (normal polling + refresh URL) does not have this problem.
 
 ## Testing
 
-Inject captured `pmset -g batt` outputs via the `PMSET_FIXTURE` env var and
-assert the printed first line:
-
-| Fixture state                          | Expected stdout |
-| -------------------------------------- | --------------- |
-| `discharging; 1:52 remaining`          | `1:52`          |
-| `charging; 1:20 remaining`             | `1:20`          |
-| `discharging; (no estimate)`           | *(empty)*       |
-| `charged; 0:00 remaining`              | *(empty)*       |
-| `AC attached; not charging`            | *(empty)*       |
-
-Run these from the terminal before trusting the live menu-bar item.
+Inject captured `pmset -g batt` output via `PMSET_FIXTURE`; assert the menu-bar
+title (first line) per state and grep the dropdown for the percentage, the
+detail line, and the settings link.
 
 ## Out of scope (YAGNI)
 
-- Glyphs / icons, percentage, charging indicator
-- Dropdown menu, settings link
-- Dedicated app or custom Swift menu-bar binary
+- Battery-level glyphs / percentage in the menu-bar title (dropped in favor of a
+  bolt-or-ETA title; the percentage lives in the dropdown)
+- A dedicated app or custom Swift menu-bar binary
+- Global menu-bar spacing changes (would affect all items)
