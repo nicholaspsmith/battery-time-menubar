@@ -142,8 +142,8 @@ LOG24='2026-06-18 06:00:00 -0000 Assertions Summary- Using AC(Charge: 90)
 2026-06-19 00:00:00 -0000 Assertions Summary- Using AC(Charge: 70)'
 NOW24="$(TZ=UTC date -j -f '%Y-%m-%d %H:%M:%S' '2026-06-19 12:00:00' +%s 2>/dev/null)"
 got24="$(TZ=UTC BT_COMPUTE_24H=1 BT_NOW="$NOW24" PMSET_LOG_FIXTURE="$LOG24" "$SCRIPT" 2>/dev/null)"
-if [ "$got24" = "21600 64800" ]; then printf 'ok   - 24h compute: 6h batt / 18h AC\n'
-else printf 'FAIL - 24h compute: expected [21600 64800] got [%s]\n' "$got24"; fail=1; fi
+if [ "$got24" = "21600 64800 70 0 0" ]; then printf 'ok   - 24h compute: 6h batt / 18h AC + metrics\n'
+else printf 'FAIL - 24h compute: expected [21600 64800 70 0 0] got [%s]\n' "$got24"; fail=1; fi
 
 has_24h() {  # name cache-fixture needle
   if PMSET_FIXTURE="$DISCHARGING" BT_24H_CACHE_FIXTURE="$2" "$SCRIPT" | grep -qF -- "$3"; then
@@ -152,5 +152,32 @@ has_24h() {  # name cache-fixture needle
 }
 has_24h "24h display: on-battery line" "21600 64800" "24h on battery: 6h 0m (25%)"
 has_24h "24h display: plugged line"    "21600 64800" "24h plugged in: 18h 0m (75%)"
+
+# --- battery longevity tips (cache fields: batt ac minCharge highACsecs lowEpisodes) ---
+IOREG_HOT='    "CycleCount" = 11
+    "DesignCapacity" = 8579
+    "AppleRawMaxCapacity" = 8682
+    "Voltage" = 13136
+    "InstantAmperage" = 2917
+    "Temperature" = 3600'
+IOREG_OLD='    "CycleCount" = 850
+    "DesignCapacity" = 8579
+    "AppleRawMaxCapacity" = 8682
+    "Voltage" = 13136
+    "InstantAmperage" = 2917
+    "Temperature" = 3026'
+tip_has() {   # name pmset ioreg cache needle
+  if PMSET_FIXTURE="$2" IOREG_FIXTURE="$3" BT_24H_CACHE_FIXTURE="$4" "$SCRIPT" | grep -qF -- "$5"; then
+    printf 'ok   - %s\n' "$1"; else printf 'FAIL - %s: missing [%s]\n' "$1" "$5"; fail=1; fi
+}
+tip_hasnt() { # name pmset ioreg cache needle (must be absent)
+  if PMSET_FIXTURE="$2" IOREG_FIXTURE="$3" BT_24H_CACHE_FIXTURE="$4" "$SCRIPT" | grep -qF -- "$5"; then
+    printf 'FAIL - %s: unexpected [%s]\n' "$1" "$5"; fail=1; else printf 'ok   - %s\n' "$1"; fi
+}
+tip_has   "tip: deep discharge"   "$DISCHARGING" "$IOREG_BAT" "1000 2000 9 0 3"      "You dropped to 9% recently (3× under 20%)"
+tip_has   "tip: high charge"      "$CHARGING"    "$IOREG_CHG" "1000 2000 50 30000 0" "Plugged in near full 8h today"
+tip_has   "tip: running warm"     "$CHARGING"    "$IOREG_HOT" "1000 2000 50 0 0"     "Battery is 36°C now"
+tip_has   "tip: cycle near rated" "$CHARGING"    "$IOREG_OLD" "1000 2000 50 0 0"     "Cycle count 850 of ~1000"
+tip_hasnt "no tips when healthy"  "$CHARGING"    "$IOREG_CHG" "1000 2000 60 0 0"     "💡"
 
 exit $fail

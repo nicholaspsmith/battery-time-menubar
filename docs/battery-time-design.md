@@ -80,7 +80,13 @@ Power on Apple Silicon) needs root, so a tightly-scoped passwordless-sudo rule
 the **background** when the cache (`~/Library/Caches/battery-time-24h.cache`) is
 older than ~10 min and renders from the cache (never blocking). Parsing uses perl
 + Time::Local (macOS awk lacks `mktime`); `compute_24h` is tested via
-`PMSET_LOG_FIXTURE` + `BT_NOW` (`BT_COMPUTE_24H=1` prints raw seconds).
+`PMSET_LOG_FIXTURE` + `BT_NOW` (`BT_COMPUTE_24H=1` prints raw seconds). The cache
+line carries five fields: `batt ac minCharge highACsecs lowEpisodes`.
+
+**Battery-longevity tips:** a section shown only when a trigger fires, from the
+cache metrics + ioreg. Triggers: deep discharge (min ≤15% or ≥2 dips ≤20% in
+24h), prolonged high charge (≥8h plugged at ≥95%), running warm (current temp
+≥35°C), and cycle count near rated life (≥800 of ~1000). Each is a `💡` line.
 
 ## Updates / Ice positioning
 

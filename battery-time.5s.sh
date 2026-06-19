@@ -30,17 +30,25 @@ HELPER="$REPO_DIR/bin/render-title"
 compute_24h() {
   local now="${BT_NOW:-$(date +%s)}"
   printf '%s\n' "${PMSET_LOG_FIXTURE:-$(pmset -g log 2>/dev/null)}" | BT_NOW="$now" perl -MTime::Local -e '
-    my $now=$ENV{BT_NOW}; my $win=$now-86400; my(@T,@S);
+    my $now=$ENV{BT_NOW}; my $win=$now-86400; my(@T,@S,@C);
     while(<STDIN>){
       next unless /Using (AC|Batt)/; my $s=$1;
       next unless /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})/;
-      push @T, timelocal($6,$5,$4,$3,$2-1,$1); push @S,$s;
+      my $ts=timelocal($6,$5,$4,$3,$2-1,$1);
+      my $c=(/Charge:\s*(\d+)/)?$1:-1;
+      push @T,$ts; push @S,$s; push @C,$c;
     }
-    my($b,$a)=(0,0);
+    my($b,$a,$minc,$hi,$lo,$pl)=(0,0,101,0,0,0);
     for my $i (0..$#T){ my $st=$T[$i]; my $en=($i<$#T)?$T[$i+1]:$now;
       next if $en<$win; $st=$win if $st<$win; $en=$now if $en>$now;
-      my $d=$en-$st; $d=0 if $d<0; if($S[$i] eq "AC"){$a+=$d}else{$b+=$d} }
-    printf "%d %d\n",$b,$a;'
+      my $d=$en-$st; $d=0 if $d<0;
+      if($S[$i] eq "AC"){$a+=$d}else{$b+=$d}
+      my $c=$C[$i];
+      if($c>=0){ $minc=$c if $c<$minc;
+        $hi+=$d if($S[$i] eq "AC" && $c>=95);
+        if($c<=20 && !$pl){$lo++;$pl=1} elsif($c>25){$pl=0} } }
+    $minc=-1 if $minc==101;
+    printf "%d %d %d %d %d\n",$b,$a,$minc,$hi,$lo;'
 }
 if [ "${BT_COMPUTE_24H:-}" = 1 ]; then compute_24h; exit 0; fi
 
@@ -154,10 +162,11 @@ if [ "$plugged" = 1 ] && { [ -n "$aname" ] || [ -n "$awatts" ]; }; then
 fi
 # temperature unit preference (TEMPUNIT_FIXTURE seam; persisted by set-tempunit.sh)
 tunit="${TEMPUNIT_FIXTURE:-$(cat "$HOME/.config/battery-time/tempunit" 2>/dev/null)}"; [ "$tunit" = "F" ] || tunit="C"
-parts=""
+temp_disp=""; parts=""
 if [ -n "$temp100" ]; then
   c=$(( temp100 / 100 ))
-  if [ "$tunit" = "F" ]; then parts="$(( c * 9 / 5 + 32 ))°F"; else parts="${c}°C"; fi
+  if [ "$tunit" = "F" ]; then temp_disp="$(( c * 9 / 5 + 32 ))°F"; else temp_disp="${c}°C"; fi
+  parts="$temp_disp"
 fi
 [ -n "$volt_mv" ] && { v="$(echo "scale=1; $volt_mv / 1000" | bc 2>/dev/null)"; parts="${parts:+$parts · }${v} V"; }
 [ -n "$rawcur" ] && [ -n "$rawmax" ] && parts="${parts:+$parts · }${rawcur} / ${rawmax} mAh"
@@ -177,14 +186,32 @@ if [ -z "$usage24" ]; then
   fi
   usage24="$(cat "$CACHE24" 2>/dev/null)"
 fi
+b24=""; a24=""; minc24=""; highac24=""; loweps24=""
+[ -n "$usage24" ] && read -r b24 a24 minc24 highac24 loweps24 _ <<< "$usage24"
 usage24_batt=""; usage24_ac=""
-if [ -n "$usage24" ]; then
-  b24="${usage24%% *}"; a24="${usage24##* }"; tot24=$(( ${b24:-0} + ${a24:-0} ))
+if [ -n "$b24" ] && [ -n "$a24" ]; then
+  tot24=$(( b24 + a24 ))
   if [ "$tot24" -gt 0 ]; then
     pb=$(( (b24 * 100 + tot24 / 2) / tot24 )); pa=$(( 100 - pb ))
     usage24_batt="24h on battery: $(( b24 / 3600 ))h $(( (b24 % 3600) / 60 ))m (${pb}%)"
     usage24_ac="24h plugged in: $(( a24 / 3600 ))h $(( (a24 % 3600) / 60 ))m (${pa}%)"
   fi
+fi
+
+# --- battery longevity tips (shown only when a trigger fires) ---
+tips=""
+add_tip() { if [ -z "$tips" ]; then tips="💡 $1"; else tips="$tips"$'\n'"💡 $1"; fi; }
+if [ -n "$minc24" ] && [ "$minc24" -ge 0 ] && { [ "$minc24" -le 15 ] || { [ -n "$loweps24" ] && [ "$loweps24" -ge 2 ]; }; }; then
+  add_tip "You dropped to ${minc24}% recently${loweps24:+ (${loweps24}× under 20%)}. Recharge before ~20% — deep discharges add wear."
+fi
+if [ -n "$highac24" ] && [ "$highac24" -ge 28800 ]; then
+  add_tip "Plugged in near full $(( highac24 / 3600 ))h today. Sitting at high charge ages Li-ion — enable Optimized Charging / 80% limit."
+fi
+if [ -n "$temp100" ] && [ "$(( temp100 / 100 ))" -ge 35 ]; then
+  add_tip "Battery is ${temp_disp} now. Heat is the top cause of aging — improve airflow, ease load while charging."
+fi
+if [ -n "$cyc" ] && [ "$cyc" -ge 800 ]; then
+  add_tip "Cycle count ${cyc} of ~1000 rated — nearing rated life; some capacity loss is expected."
 fi
 
 echo "---"
@@ -199,6 +226,10 @@ if [ -n "$usage24_batt" ]; then
   echo "---"
   printf '%s\n' "$usage24_batt"
   printf '%s\n' "$usage24_ac"
+fi
+if [ -n "$tips" ]; then
+  echo "---"
+  printf '%s\n' "$tips"
 fi
 echo "---"
 printf 'Open Battery Settings... | shell=/usr/bin/open param1=%s terminal=false\n' "$SETTINGS_URL"
