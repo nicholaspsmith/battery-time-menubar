@@ -4,6 +4,7 @@ set -u
 
 SCRIPT="$(cd "$(dirname "$0")/.." && pwd)/battery-time.5s.sh"
 export BT_TITLE_TEXT=1   # assert the text-form title (image bytes aren't deterministic)
+export TEMPUNIT_FIXTURE=C # deterministic temperature unit for tests
 fail=0
 
 # check the menu-bar TITLE (first line; the rest of the output is the dropdown).
@@ -118,5 +119,19 @@ has_io "stat: adapter name"       "$CHARGING"    "$IOREG_CHG" "Adapter: 140W USB
 has_io "stat: extras (charging)"  "$CHARGING"    "$IOREG_CHG" "30°C · 13.1 V · 8318 / 8682 mAh"
 has_io "stat: using watts (batt)" "$DISCHARGING" "$IOREG_BAT" "Using 26.4 W"
 has_io "stat: extras (battery)"   "$DISCHARGING" "$IOREG_BAT" "31°C · 12.0 V · 5000 / 8682 mAh"
+
+# --- temperature unit toggle ---
+has_u() {
+  local name="$1" pf="$2" iof="$3" u="$4" needle="$5"
+  if PMSET_FIXTURE="$pf" IOREG_FIXTURE="$iof" TEMPUNIT_FIXTURE="$u" "$SCRIPT" | grep -qF -- "$needle"; then
+    printf 'ok   - %s\n' "$name"
+  else
+    printf 'FAIL - %s: output missing [%s]\n' "$name" "$needle"; fail=1
+  fi
+}
+has_u "temp shown in Fahrenheit" "$CHARGING" "$IOREG_CHG" F "86°F · 13.1 V · 8318 / 8682 mAh"
+has_u "toggle offers F when in C" "$CHARGING" "$IOREG_CHG" C "Switch to °F"
+has_u "toggle command sets F"     "$CHARGING" "$IOREG_CHG" C "set-tempunit.sh param1=F"
+has_u "toggle offers C when in F" "$CHARGING" "$IOREG_CHG" F "Switch to °C"
 
 exit $fail

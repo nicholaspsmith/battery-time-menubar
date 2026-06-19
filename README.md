@@ -32,7 +32,7 @@ to Ice's hidden section).
 - Battery percentage
 - A detailed status line — `3 hr 14 min until empty`, `Charging - 1 hr 20 min until full`, `Fully charged`, …
 - Extra stats (one `ioreg` call): health + cycle count, live power draw (V×A),
-  adapter wattage, and temperature / voltage / raw charge (mAh)
+  adapter wattage, and temperature (with a °C/°F toggle) / voltage / raw charge (mAh)
 - **Open Battery Settings...** — opens the Battery pane in System Settings
 
 ## Updates
@@ -106,5 +106,6 @@ sudo rm -f /etc/sudoers.d/battery-time-powermode
 - `com.nicholassmith.battery-time-power-watch.plist` — launchd agent template
 - `install.sh` — installer (plugin symlink + launchd agent)
 - `install-powermode-sudoers.sh` — one-time passwordless-sudo rule for the toggle
+- `set-tempunit.sh` — persists the dropdown °C/°F temperature unit
 - `test/test_battery_time.sh` — fixture tests
 - `docs/` — design notes and plan

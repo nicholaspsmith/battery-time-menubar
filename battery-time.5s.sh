@@ -21,7 +21,8 @@ export PATH="/usr/bin:/bin:$PATH"
 # Locate the compiled menu-bar image renderer (next to the real script, even when
 # this plugin is reached via a symlink in the SwiftBar plugin folder).
 self="$0"; [ -L "$self" ] && self="$(readlink "$self")"
-HELPER="$(cd "$(dirname "$self")" 2>/dev/null && pwd)/bin/render-title"
+REPO_DIR="$(cd "$(dirname "$self")" 2>/dev/null && pwd)"
+HELPER="$REPO_DIR/bin/render-title"
 
 SETTINGS_URL="x-apple.systempreferences:com.apple.Battery-Settings.extension"
 
@@ -131,11 +132,21 @@ fi
 if [ "$plugged" = 1 ] && { [ -n "$aname" ] || [ -n "$awatts" ]; }; then
   adapter_line="Adapter: ${aname:-${awatts} W}"
 fi
+# temperature unit preference (TEMPUNIT_FIXTURE seam; persisted by set-tempunit.sh)
+tunit="${TEMPUNIT_FIXTURE:-$(cat "$HOME/.config/battery-time/tempunit" 2>/dev/null)}"; [ "$tunit" = "F" ] || tunit="C"
 parts=""
-[ -n "$temp100" ] && parts="$(( temp100 / 100 ))°C"
+if [ -n "$temp100" ]; then
+  c=$(( temp100 / 100 ))
+  if [ "$tunit" = "F" ]; then parts="$(( c * 9 / 5 + 32 ))°F"; else parts="${c}°C"; fi
+fi
 [ -n "$volt_mv" ] && { v="$(echo "scale=1; $volt_mv / 1000" | bc 2>/dev/null)"; parts="${parts:+$parts · }${v} V"; }
 [ -n "$rawcur" ] && [ -n "$rawmax" ] && parts="${parts:+$parts · }${rawcur} / ${rawmax} mAh"
 extras_line="$parts"
+temp_toggle_line=""
+if [ -n "$temp100" ]; then
+  if [ "$tunit" = "C" ]; then temp_toggle_line="Switch to °F | shell=$REPO_DIR/set-tempunit.sh param1=F terminal=false refresh=true"
+  else temp_toggle_line="Switch to °C | shell=$REPO_DIR/set-tempunit.sh param1=C terminal=false refresh=true"; fi
+fi
 
 echo "---"
 printf 'Battery: %s\n' "${pct:-n/a}"
@@ -144,5 +155,6 @@ printf '%s\n' "$detail"
 [ -n "$power_line" ]   && printf '%s\n' "$power_line"
 [ -n "$adapter_line" ] && printf '%s\n' "$adapter_line"
 [ -n "$extras_line" ]  && printf '%s\n' "$extras_line"
+[ -n "$temp_toggle_line" ] && printf '%s\n' "$temp_toggle_line"
 echo "---"
 printf 'Open Battery Settings... | shell=/usr/bin/open param1=%s terminal=false\n' "$SETTINGS_URL"
