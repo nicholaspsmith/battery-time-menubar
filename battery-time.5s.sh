@@ -7,10 +7,21 @@
 # In-place refresh keeps its position in menu-bar managers like Ice.
 #
 # <bitbar.title>Battery Time Remaining</bitbar.title>
-# <bitbar.version>2.2</bitbar.version>
+# <bitbar.version>2.3</bitbar.version>
 # <bitbar.desc>Battery time remaining (H:MM) with a details dropdown.</bitbar.desc>
+# Hide SwiftBar's default dropdown items (Option+Click still reveals them).
+# <swiftbar.hideAbout>true</swiftbar.hideAbout>
+# <swiftbar.hideRunInTerminal>true</swiftbar.hideRunInTerminal>
+# <swiftbar.hideLastUpdated>true</swiftbar.hideLastUpdated>
+# <swiftbar.hideDisablePlugin>true</swiftbar.hideDisablePlugin>
+# <swiftbar.hideSwiftBar>true</swiftbar.hideSwiftBar>
 
 export PATH="/usr/bin:/bin:$PATH"
+
+# Locate the compiled menu-bar image renderer (next to the real script, even when
+# this plugin is reached via a symlink in the SwiftBar plugin folder).
+self="$0"; [ -L "$self" ] && self="$(readlink "$self")"
+HELPER="$(cd "$(dirname "$self")" 2>/dev/null && pwd)/bin/render-title"
 
 SETTINGS_URL="x-apple.systempreferences:com.apple.Battery-Settings.extension"
 
@@ -50,12 +61,25 @@ if [ -n "$time" ]; then
 fi
 
 # --- menu bar title ---
-if [ "$plugged" = 1 ]; then
-  if [ -n "$time" ]; then title=":bolt.fill: $time"; else title=":bolt.fill:"; fi
-else
-  title="${time:-"--:--"}"
-fi
-printf '%s | size=11 sfsize=9\n' "$title"
+# Rendered as a tight transparent template image (matches the icon-based items'
+# spacing — SwiftBar pads text items wider). Falls back to text if the renderer
+# isn't compiled or BT_TITLE_TEXT is set (tests use the text form).
+if [ "$plugged" = 1 ]; then mb_text="$time"; mb_bolt=1; else mb_text="${time:-"--:--"}"; mb_bolt=0; fi
+
+emit_title() {  # <text> <bolt:0|1>
+  local txt="$1" bolt="$2" b64=""
+  if [ -x "$HELPER" ] && [ -z "${BT_TITLE_TEXT:-}" ]; then
+    if [ "$bolt" = 1 ]; then b64="$("$HELPER" "$txt" --bolt 2>/dev/null)"; else b64="$("$HELPER" "$txt" 2>/dev/null)"; fi
+    if [ -n "$b64" ]; then printf '| templateImage=%s\n' "$b64"; return; fi
+  fi
+  # text fallback (also the form exercised by tests)
+  if [ "$bolt" = 1 ]; then
+    if [ -n "$txt" ]; then printf ':bolt.fill: %s | sfsize=9\n' "$txt"; else printf ':bolt.fill: | sfsize=9\n'; fi
+  else
+    printf '%s\n' "$txt"
+  fi
+}
+emit_title "$mb_text" "$mb_bolt"
 
 # --- dropdown: %, detail, Battery Settings link ---
 if [ "$plugged" = 1 ]; then
@@ -67,6 +91,23 @@ else
   if [ -n "$human" ]; then detail="${human} until empty"; else detail="On battery (estimating...)"; fi
 fi
 
+# Energy-mode selector (first in the dropdown). powermode: 0 Automatic, 1 Low
+# Power, 2 High Power. The active mode is checkmarked; selecting one sets it for
+# the current power source via passwordless sudo (install-powermode-sudoers.sh).
+cur_pm="${POWERMODE_FIXTURE:-$(pmset -g | awk '/^[[:space:]]*powermode[[:space:]]/{print $2; exit}')}"
+if [ "$plugged" = 1 ]; then pm_src="-c"; else pm_src="-b"; fi
+
+mode_item() {  # <powermode value> <label>
+  local val="$1" label="$2" chk=""
+  [ "$cur_pm" = "$val" ] && chk=" checked=true"
+  printf '%s | shell=/usr/bin/sudo param1=/usr/bin/pmset param2=%s param3=powermode param4=%s terminal=false refresh=true%s\n' \
+    "$label" "$pm_src" "$val" "$chk"
+}
+
+echo "---"
+mode_item 0 "Automatic"
+mode_item 1 "Low Power"
+mode_item 2 "High Power"
 echo "---"
 printf 'Battery: %s\n' "${pct:-n/a}"
 printf '%s\n' "$detail"

@@ -32,10 +32,13 @@ A SwiftBar plugin plus a launchd watcher, in a dedicated repo at
 | Charging, has estimate | bolt + `1:20` (time to full) |
 | Charged / plugged-in / not-charging | bolt only |
 
-- The bolt is SF Symbol `bolt.fill`, embedded **inline** in the title
-  (`:bolt.fill:`) and sized with `sfsize=9`; the digits use `size=11` to match
-  the native battery percentage. Inline embedding is what `sfsize` controls — a
-  symbol set via the `sfimage=` parameter ignores `sfsize`.
+- The title is rendered as a tight transparent **template image** by the compiled
+  `render-title.swift` helper (bolt `bolt.fill` drawn into the image), emitted as
+  `| templateImage=<base64>` with an empty title — so it sits as closely as the
+  icon-based menu-bar items. SwiftBar pads *text* items wider than image items
+  (issue #228), which is why our lone text item looked over-padded. It falls back
+  to a text title (inline `:bolt.fill:` + `sfsize=9`, default-size digits) when
+  the helper isn't compiled or in tests (`BT_TITLE_TEXT=1`).
 - A meaningful ETA exists only while `discharging` or `charging`; `charged`
   reports a bogus `0:00 remaining`, so the ETA is gated on state.
 - The title is **never empty** — always at least the bolt or `--:--`. This is
