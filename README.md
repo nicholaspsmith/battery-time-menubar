@@ -36,8 +36,9 @@ to Ice's hidden section).
 - 24-hour usage — time on battery vs plugged in, parsed from `pmset -g log`
   (which is slow, so it's recomputed in the background and cached ~10 min — the
   scrape never blocks a refresh)
-- Battery-longevity **tips** — shown only when a behavior trigger fires (deep
-  discharges, prolonged high charge, running warm, or cycle count near rated life)
+- Battery-longevity **tips** — a "Battery Life Tips" item (shown only when a
+  trigger fires: deep discharges, prolonged high charge, running warm, or cycle
+  count near rated life) that opens a dialog with the advice (keeps the dropdown narrow)
 - **Open Battery Settings...** — opens the Battery pane in System Settings
 
 ## Updates
@@ -112,5 +113,6 @@ sudo rm -f /etc/sudoers.d/battery-time-powermode
 - `install.sh` — installer (plugin symlink + launchd agent)
 - `install-powermode-sudoers.sh` — one-time passwordless-sudo rule for the toggle
 - `set-tempunit.sh` — persists the dropdown °C/°F temperature unit
+- `show-tips.sh` — opens the current battery-longevity tips in a dialog
 - `test/test_battery_time.sh` — fixture tests
 - `docs/` — design notes and plan

@@ -166,18 +166,26 @@ IOREG_OLD='    "CycleCount" = 850
     "Voltage" = 13136
     "InstantAmperage" = 2917
     "Temperature" = 3026'
-tip_has() {   # name pmset ioreg cache needle
-  if PMSET_FIXTURE="$2" IOREG_FIXTURE="$3" BT_24H_CACHE_FIXTURE="$4" "$SCRIPT" | grep -qF -- "$5"; then
+tip_has() {   # name pmset ioreg cache needle (in dropdown stdout)
+  if PMSET_FIXTURE="$2" IOREG_FIXTURE="$3" BT_24H_CACHE_FIXTURE="$4" BT_TIPS_FILE=/dev/null "$SCRIPT" | grep -qF -- "$5"; then
     printf 'ok   - %s\n' "$1"; else printf 'FAIL - %s: missing [%s]\n' "$1" "$5"; fail=1; fi
 }
-tip_hasnt() { # name pmset ioreg cache needle (must be absent)
-  if PMSET_FIXTURE="$2" IOREG_FIXTURE="$3" BT_24H_CACHE_FIXTURE="$4" "$SCRIPT" | grep -qF -- "$5"; then
+tip_hasnt() { # name pmset ioreg cache needle (must be absent from dropdown stdout)
+  if PMSET_FIXTURE="$2" IOREG_FIXTURE="$3" BT_24H_CACHE_FIXTURE="$4" BT_TIPS_FILE=/dev/null "$SCRIPT" | grep -qF -- "$5"; then
     printf 'FAIL - %s: unexpected [%s]\n' "$1" "$5"; fail=1; else printf 'ok   - %s\n' "$1"; fi
 }
-tip_has   "tip: deep discharge"   "$DISCHARGING" "$IOREG_BAT" "1000 2000 9 0 3"      "You dropped to 9% recently (3× under 20%)"
-tip_has   "tip: high charge"      "$CHARGING"    "$IOREG_CHG" "1000 2000 50 30000 0" "Plugged in near full 8h today"
-tip_has   "tip: running warm"     "$CHARGING"    "$IOREG_HOT" "1000 2000 50 0 0"     "Battery is 36°C now"
-tip_has   "tip: cycle near rated" "$CHARGING"    "$IOREG_OLD" "1000 2000 50 0 0"     "Cycle count 850 of ~1000"
-tip_hasnt "no tips when healthy"  "$CHARGING"    "$IOREG_CHG" "1000 2000 60 0 0"     "💡"
+tip_fires() { # name pmset ioreg cache needle (must be in the written tips file)
+  local tf; tf="$(mktemp)"
+  PMSET_FIXTURE="$2" IOREG_FIXTURE="$3" BT_24H_CACHE_FIXTURE="$4" BT_TIPS_FILE="$tf" "$SCRIPT" >/dev/null 2>&1
+  if grep -qF -- "$5" "$tf"; then printf 'ok   - %s\n' "$1"; else printf 'FAIL - %s: tip missing [%s]\n' "$1" "$5"; fail=1; fi
+  rm -f "$tf"
+}
+tip_fires "tip: deep discharge"   "$DISCHARGING" "$IOREG_BAT" "1000 2000 9 0 3"      "You dropped to 9% recently (3× under 20%)"
+tip_fires "tip: high charge"      "$CHARGING"    "$IOREG_CHG" "1000 2000 50 30000 0" "Plugged in near full 8h today"
+tip_fires "tip: running warm"     "$CHARGING"    "$IOREG_HOT" "1000 2000 50 0 0"     "Battery is 36°C now"
+tip_fires "tip: cycle near rated" "$CHARGING"    "$IOREG_OLD" "1000 2000 50 0 0"     "Cycle count 850 of ~1000"
+tip_has   "tips item appears"     "$DISCHARGING" "$IOREG_BAT" "1000 2000 9 0 3"      "Battery Life Tips"
+tip_hasnt "no tips item healthy"  "$CHARGING"    "$IOREG_CHG" "1000 2000 60 0 0"     "Battery Life Tips"
+tip_hasnt "tip text not inline"   "$DISCHARGING" "$IOREG_BAT" "1000 2000 9 0 3"      "You dropped to 9%"
 
 exit $fail

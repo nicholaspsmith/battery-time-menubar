@@ -228,8 +228,11 @@ if [ -n "$usage24_batt" ]; then
   printf '%s\n' "$usage24_ac"
 fi
 if [ -n "$tips" ]; then
+  # Keep the dropdown narrow: stash the tip text in a file and show one item that
+  # opens it in a dialog (show-tips.sh) rather than printing the long lines inline.
+  printf '%s\n' "$tips" > "${BT_TIPS_FILE:-$HOME/Library/Caches/battery-time-tips.txt}" 2>/dev/null
   echo "---"
-  printf '%s\n' "$tips"
+  printf 'Battery Life Tips | shell=%s/show-tips.sh terminal=false\n' "$REPO_DIR"
 fi
 echo "---"
 printf 'Open Battery Settings... | shell=/usr/bin/open param1=%s terminal=false\n' "$SETTINGS_URL"

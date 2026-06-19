@@ -7,7 +7,7 @@ SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_DIR="${SWIFTBAR_PLUGIN_DIR:-$HOME/.config/SwiftBar}"
 
 # --- SwiftBar plugin ---
-chmod +x "$SRC_DIR/battery-time.5s.sh" "$SRC_DIR/set-tempunit.sh"
+chmod +x "$SRC_DIR/battery-time.5s.sh" "$SRC_DIR/set-tempunit.sh" "$SRC_DIR/show-tips.sh"
 mkdir -p "$PLUGIN_DIR"
 rm -f "$PLUGIN_DIR/battery-time.30s.sh" "$PLUGIN_DIR/battery-time.sh"  # prior installs
 rm -f "$HOME/Library/Caches/battery-time-24h.cache"                   # regenerate w/ current fields

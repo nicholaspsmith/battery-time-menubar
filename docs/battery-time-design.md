@@ -86,7 +86,9 @@ line carries five fields: `batt ac minCharge highACsecs lowEpisodes`.
 **Battery-longevity tips:** a section shown only when a trigger fires, from the
 cache metrics + ioreg. Triggers: deep discharge (min ≤15% or ≥2 dips ≤20% in
 24h), prolonged high charge (≥8h plugged at ≥95%), running warm (current temp
-≥35°C), and cycle count near rated life (≥800 of ~1000). Each is a `💡` line.
+≥35°C), and cycle count near rated life (≥800 of ~1000). Rendered as a single
+"Battery Life Tips" dropdown item that stashes the `💡` lines in a file and
+opens them in a dialog (`show-tips.sh`), so the dropdown stays narrow.
 
 ## Updates / Ice positioning
 
