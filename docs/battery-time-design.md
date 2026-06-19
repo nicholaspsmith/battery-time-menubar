@@ -48,15 +48,39 @@ A SwiftBar plugin plus a launchd watcher, in a dedicated repo at
 ## Dropdown
 
 ```
-Battery: 72%
-3 hr 14 min until empty           # or "Charging - 1 hr 20 min until full", "Fully charged", ...
+Automatic / Low Power / High Power   # energy-mode selector; active one checkmarked
 ---
-Open Battery Settings...          # shell=/usr/bin/open param1=<url> terminal=false
+Battery: 72%
+3 hr 14 min until empty              # or "Charging - 1 hr 20 min until full", "Fully charged"
+Health: 100% (11 cycles)             # ioreg AppleRawMaxCapacity/DesignCapacity + CycleCount
+Using 12 W                           # ioreg Voltage x InstantAmperage; "Charging at N W" when plugged
+Adapter: 140W USB-C Power Adapter     # ioreg AdapterDetails, when plugged
+30°C · 13.1 V · 8318 / 8682 mAh       # temp (°C/°F toggle) · voltage · raw charge
+Switch to °F                         # set-tempunit.sh persists the unit
+---
+24h on battery: 3h 12m (22%)         # from pmset -g log, background-cached (~10 min)
+24h plugged in: 11h 9m (78%)
+---
+Open Battery Settings...             # shell=/usr/bin/open param1=<url> terminal=false
 ```
+
+SwiftBar's own default dropdown items are hidden via `hide*` metadata.
 
 Battery Settings URL: `x-apple.systempreferences:com.apple.Battery-Settings.extension`
 (the `PowerPreferences.appex` pane on macOS 26; identifier verified against the
 System Settings binary).
+
+**Energy-mode selector:** `pmset powermode` (0 Automatic, 1 Low Power, 2 High
+Power on Apple Silicon) needs root, so a tightly-scoped passwordless-sudo rule
+(`/etc/sudoers.d/battery-time-powermode`, installed by
+`install-powermode-sudoers.sh`) permits exactly `pmset -b/-c powermode 0|1|2`.
+
+**24-hour usage:** `pmset -g log` has the source-change history but is slow
+(~1.4s, ~53k lines), so the plugin recomputes the on-battery vs plugged split in
+the **background** when the cache (`~/Library/Caches/battery-time-24h.cache`) is
+older than ~10 min and renders from the cache (never blocking). Parsing uses perl
++ Time::Local (macOS awk lacks `mktime`); `compute_24h` is tested via
+`PMSET_LOG_FIXTURE` + `BT_NOW` (`BT_COMPUTE_24H=1` prints raw seconds).
 
 ## Updates / Ice positioning
 

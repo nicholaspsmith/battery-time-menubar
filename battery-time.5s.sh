@@ -24,6 +24,26 @@ self="$0"; [ -L "$self" ] && self="$(readlink "$self")"
 REPO_DIR="$(cd "$(dirname "$self")" 2>/dev/null && pwd)"
 HELPER="$REPO_DIR/bin/render-title"
 
+# Sum wall-clock seconds on battery vs AC over the last 24h from pmset -g log's
+# "Using AC/Batt" events. perl (macOS awk lacks mktime). Prints "batt_secs ac_secs".
+# Slow (pmset -g log is ~1.4s) — the live path runs this in the background + caches.
+compute_24h() {
+  local now="${BT_NOW:-$(date +%s)}"
+  printf '%s\n' "${PMSET_LOG_FIXTURE:-$(pmset -g log 2>/dev/null)}" | BT_NOW="$now" perl -MTime::Local -e '
+    my $now=$ENV{BT_NOW}; my $win=$now-86400; my(@T,@S);
+    while(<STDIN>){
+      next unless /Using (AC|Batt)/; my $s=$1;
+      next unless /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})/;
+      push @T, timelocal($6,$5,$4,$3,$2-1,$1); push @S,$s;
+    }
+    my($b,$a)=(0,0);
+    for my $i (0..$#T){ my $st=$T[$i]; my $en=($i<$#T)?$T[$i+1]:$now;
+      next if $en<$win; $st=$win if $st<$win; $en=$now if $en>$now;
+      my $d=$en-$st; $d=0 if $d<0; if($S[$i] eq "AC"){$a+=$d}else{$b+=$d} }
+    printf "%d %d\n",$b,$a;'
+}
+if [ "${BT_COMPUTE_24H:-}" = 1 ]; then compute_24h; exit 0; fi
+
 SETTINGS_URL="x-apple.systempreferences:com.apple.Battery-Settings.extension"
 
 batt="${PMSET_FIXTURE:-$(pmset -g batt)}"
@@ -148,6 +168,25 @@ if [ -n "$temp100" ]; then
   else temp_toggle_line="Switch to °C | shell=$REPO_DIR/set-tempunit.sh param1=C terminal=false refresh=true"; fi
 fi
 
+# 24h on-battery vs plugged usage (cached; background recompute when stale).
+usage24="${BT_24H_CACHE_FIXTURE:-}"
+if [ -z "$usage24" ]; then
+  CACHE24="$HOME/Library/Caches/battery-time-24h.cache"
+  if [ ! -f "$CACHE24" ] || [ -n "$(find "$CACHE24" -mmin +10 2>/dev/null)" ]; then
+    ( compute_24h > "$CACHE24.tmp.$$" 2>/dev/null && mv -f "$CACHE24.tmp.$$" "$CACHE24" ) >/dev/null 2>&1 &
+  fi
+  usage24="$(cat "$CACHE24" 2>/dev/null)"
+fi
+usage24_batt=""; usage24_ac=""
+if [ -n "$usage24" ]; then
+  b24="${usage24%% *}"; a24="${usage24##* }"; tot24=$(( ${b24:-0} + ${a24:-0} ))
+  if [ "$tot24" -gt 0 ]; then
+    pb=$(( (b24 * 100 + tot24 / 2) / tot24 )); pa=$(( 100 - pb ))
+    usage24_batt="24h on battery: $(( b24 / 3600 ))h $(( (b24 % 3600) / 60 ))m (${pb}%)"
+    usage24_ac="24h plugged in: $(( a24 / 3600 ))h $(( (a24 % 3600) / 60 ))m (${pa}%)"
+  fi
+fi
+
 echo "---"
 printf 'Battery: %s\n' "${pct:-n/a}"
 printf '%s\n' "$detail"
@@ -156,5 +195,10 @@ printf '%s\n' "$detail"
 [ -n "$adapter_line" ] && printf '%s\n' "$adapter_line"
 [ -n "$extras_line" ]  && printf '%s\n' "$extras_line"
 [ -n "$temp_toggle_line" ] && printf '%s\n' "$temp_toggle_line"
+if [ -n "$usage24_batt" ]; then
+  echo "---"
+  printf '%s\n' "$usage24_batt"
+  printf '%s\n' "$usage24_ac"
+fi
 echo "---"
 printf 'Open Battery Settings... | shell=/usr/bin/open param1=%s terminal=false\n' "$SETTINGS_URL"

@@ -33,6 +33,9 @@ to Ice's hidden section).
 - A detailed status line — `3 hr 14 min until empty`, `Charging - 1 hr 20 min until full`, `Fully charged`, …
 - Extra stats (one `ioreg` call): health + cycle count, live power draw (V×A),
   adapter wattage, and temperature (with a °C/°F toggle) / voltage / raw charge (mAh)
+- 24-hour usage — time on battery vs plugged in, parsed from `pmset -g log`
+  (which is slow, so it's recomputed in the background and cached ~10 min — the
+  scrape never blocks a refresh)
 - **Open Battery Settings...** — opens the Battery pane in System Settings
 
 ## Updates

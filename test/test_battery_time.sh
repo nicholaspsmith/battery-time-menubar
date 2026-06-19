@@ -134,4 +134,23 @@ has_u "toggle offers F when in C" "$CHARGING" "$IOREG_CHG" C "Switch to °F"
 has_u "toggle command sets F"     "$CHARGING" "$IOREG_CHG" C "set-tempunit.sh param1=F"
 has_u "toggle offers C when in F" "$CHARGING" "$IOREG_CHG" F "Switch to °C"
 
+# --- 24h on-battery vs plugged history ---
+# 3 events (UTC); window is the 24h before 2026-06-19 12:00:00Z:
+#   06-18 06:00 AC, 06-18 18:00 Batt, 06-19 00:00 AC  ->  batt 6h, AC 18h.
+LOG24='2026-06-18 06:00:00 -0000 Assertions Summary- Using AC(Charge: 90)
+2026-06-18 18:00:00 -0000 Assertions Summary- Using Batt(Charge: 80)
+2026-06-19 00:00:00 -0000 Assertions Summary- Using AC(Charge: 70)'
+NOW24="$(TZ=UTC date -j -f '%Y-%m-%d %H:%M:%S' '2026-06-19 12:00:00' +%s 2>/dev/null)"
+got24="$(TZ=UTC BT_COMPUTE_24H=1 BT_NOW="$NOW24" PMSET_LOG_FIXTURE="$LOG24" "$SCRIPT" 2>/dev/null)"
+if [ "$got24" = "21600 64800" ]; then printf 'ok   - 24h compute: 6h batt / 18h AC\n'
+else printf 'FAIL - 24h compute: expected [21600 64800] got [%s]\n' "$got24"; fail=1; fi
+
+has_24h() {  # name cache-fixture needle
+  if PMSET_FIXTURE="$DISCHARGING" BT_24H_CACHE_FIXTURE="$2" "$SCRIPT" | grep -qF -- "$3"; then
+    printf 'ok   - %s\n' "$1"
+  else printf 'FAIL - %s: missing [%s]\n' "$1" "$3"; fail=1; fi
+}
+has_24h "24h display: on-battery line" "21600 64800" "24h on battery: 6h 0m (25%)"
+has_24h "24h display: plugged line"    "21600 64800" "24h plugged in: 18h 0m (75%)"
+
 exit $fail
