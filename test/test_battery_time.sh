@@ -52,14 +52,13 @@ CHARGED="Now drawing from 'AC Power'
 ACHOLD="Now drawing from 'AC Power'
  -InternalBattery-0 (id=50921571)	80%; AC attached; not charging present: true"
 
-# On-battery titles are plain text (default font size); plugged titles carry the
-# inline bolt sized down via sfsize=9.
-BSUF=" | sfsize=9"
-check "on battery: just the ETA"             "$DISCHARGING" "1:52"
-check "on battery, no estimate: placeholder" "$NOEST"       "--:--"
-check "charging: bolt + time-to-full"        "$CHARGING"    ":bolt.fill: 1:20$BSUF"
-check "charged: bolt only"                   "$CHARGED"     ":bolt.fill:$BSUF"
-check "ac hold: bolt only"                   "$ACHOLD"      ":bolt.fill:$BSUF"
+# Menu-bar title falls back to "pct% time" text under BT_TITLE_TEXT; the live
+# path draws the battery glyph image instead.
+check "on battery: pct + ETA"        "$DISCHARGING" "22% 1:52"
+check "on battery, no estimate"      "$NOEST"       "50% --:--"
+check "charging: pct + time-to-full" "$CHARGING"    "80% 1:20"
+check "charged: pct only"            "$CHARGED"     "100%"
+check "ac hold: pct only"            "$ACHOLD"      "80%"
 
 # dropdown content
 has "dropdown: battery percentage"    "$DISCHARGING" "Battery: 22%"

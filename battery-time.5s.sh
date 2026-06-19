@@ -89,26 +89,36 @@ if [ -n "$time" ]; then
   if [ "$h" -gt 0 ]; then human="${h} hr ${m} min"; else human="${m} min"; fi
 fi
 
-# --- menu bar title ---
-# Rendered as a tight transparent template image (matches the icon-based items'
-# spacing — SwiftBar pads text items wider). Falls back to text if the renderer
-# isn't compiled or BT_TITLE_TEXT is set (tests use the text form).
-if [ "$plugged" = 1 ]; then mb_text="$time"; mb_bolt=1; else mb_text="${time:-"--:--"}"; mb_bolt=0; fi
+# --- menu bar title: native-style battery glyph + ETA time ---
+# Drawn as one tight image by render-title (so it spaces like the native icon).
+# Native colors: yellow in Low Power Mode, red when low on battery, else mono.
+# Falls back to "pct% time" text when the renderer isn't compiled / under tests.
+pct_num="${pct%\%}"
+cur_pm="${POWERMODE_FIXTURE:-$(pmset -g | awk '/^[[:space:]]*powermode[[:space:]]/{print $2; exit}')}"
+if [ "$status" = "Charging" ]; then is_charging=1; else is_charging=0; fi
+icon_color="none"
+if [ "$cur_pm" = "1" ]; then icon_color="yellow"
+elif [ "$plugged" != 1 ] && [ -n "$pct_num" ] && [ "$pct_num" -le 20 ]; then icon_color="red"
+fi
+if [ "$plugged" = 1 ]; then mb_time="$time"; else mb_time="${time:-"--:--"}"; fi
 
-emit_title() {  # <text> <bolt:0|1>
-  local txt="$1" bolt="$2" b64=""
-  if [ -x "$HELPER" ] && [ -z "${BT_TITLE_TEXT:-}" ]; then
-    if [ "$bolt" = 1 ]; then b64="$("$HELPER" "$txt" --bolt 2>/dev/null)"; else b64="$("$HELPER" "$txt" 2>/dev/null)"; fi
-    if [ -n "$b64" ]; then printf '| templateImage=%s\n' "$b64"; return; fi
+if [ -x "$HELPER" ] && [ -z "${BT_TITLE_TEXT:-}" ] && [ -n "$pct_num" ]; then
+  targs=(--battery "$pct_num")
+  [ "$is_charging" = 1 ] && targs+=(--charging)
+  if [ "$icon_color" != none ]; then
+    # only the fill is colored; outline/text stay the label color (detect dark/light)
+    if [ "$(defaults read -g AppleInterfaceStyle 2>/dev/null)" = "Dark" ]; then ink=white; else ink=black; fi
+    targs+=(--fill "$icon_color" --ink "$ink")
   fi
-  # text fallback (also the form exercised by tests)
-  if [ "$bolt" = 1 ]; then
-    if [ -n "$txt" ]; then printf ':bolt.fill: %s | sfsize=9\n' "$txt"; else printf ':bolt.fill: | sfsize=9\n'; fi
-  else
-    printf '%s\n' "$txt"
+  [ -n "$mb_time" ] && targs+=(--text "$mb_time")
+  b64="$("$HELPER" "${targs[@]}" 2>/dev/null)"
+  if   [ -n "$b64" ] && [ "$icon_color" != none ]; then printf '| image=%s\n' "$b64"
+  elif [ -n "$b64" ]; then printf '| templateImage=%s\n' "$b64"
+  else f="${pct_num:+${pct_num}%}"; [ -n "$mb_time" ] && f="${f:+$f }$mb_time"; printf '%s\n' "${f:---:--}"
   fi
-}
-emit_title "$mb_text" "$mb_bolt"
+else
+  f="${pct_num:+${pct_num}%}"; [ -n "$mb_time" ] && f="${f:+$f }$mb_time"; printf '%s\n' "${f:---:--}"
+fi
 
 # --- dropdown: %, detail, Battery Settings link ---
 if [ "$plugged" = 1 ]; then
@@ -123,7 +133,7 @@ fi
 # Energy-mode selector (first in the dropdown). powermode: 0 Automatic, 1 Low
 # Power, 2 High Power. The active mode is checkmarked; selecting one sets it for
 # the current power source via passwordless sudo (install-powermode-sudoers.sh).
-cur_pm="${POWERMODE_FIXTURE:-$(pmset -g | awk '/^[[:space:]]*powermode[[:space:]]/{print $2; exit}')}"
+# (cur_pm is already computed in the menu-bar title section above.)
 if [ "$plugged" = 1 ]; then pm_src="-c"; else pm_src="-b"; fi
 
 mode_item() {  # <powermode value> <label>
