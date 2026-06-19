@@ -108,8 +108,41 @@ echo "---"
 mode_item 0 "Automatic"
 mode_item 1 "Low Power"
 mode_item 2 "High Power"
+# --- extra battery stats from ioreg (one call; IOREG_FIXTURE seam for tests) ---
+ioreg_out="${IOREG_FIXTURE:-$(ioreg -rn AppleSmartBattery 2>/dev/null)}"
+ival() { printf '%s\n' "$ioreg_out" | sed -n "s/^[[:space:]]*\"$1\" = \(-*[0-9][0-9]*\).*/\1/p" | head -n1; }
+cyc="$(ival CycleCount)"; design="$(ival DesignCapacity)"; rawmax="$(ival AppleRawMaxCapacity)"
+rawcur="$(ival AppleRawCurrentCapacity)"; volt_mv="$(ival Voltage)"; amp="$(ival InstantAmperage)"; temp100="$(ival Temperature)"
+aname="$(printf '%s\n' "$ioreg_out" | sed -n 's/.*"AdapterDetails".*"Name"="\([^"]*\)".*/\1/p' | head -n1)"
+awatts="$(printf '%s\n' "$ioreg_out" | sed -n 's/.*"AdapterDetails".*"Watts"=\([0-9][0-9]*\).*/\1/p' | head -n1)"
+
+health_line=""; power_line=""; adapter_line=""; extras_line=""
+if [ -n "$rawmax" ] && [ -n "$design" ] && [ "$design" -gt 0 ]; then
+  h=$(( rawmax * 100 / design )); [ "$h" -gt 100 ] && h=100
+  health_line="Health: ${h}%${cyc:+ (${cyc} cycles)}"
+fi
+if [ -n "$volt_mv" ] && [ -n "$amp" ]; then
+  # InstantAmperage is unsigned 64-bit; the ~20-digit values are negative (discharge).
+  if [ "${#amp}" -ge 11 ]; then mag="$(echo "18446744073709551616 - $amp" | bc 2>/dev/null)"; chg=0; else mag="$amp"; chg=1; fi
+  w="$(echo "scale=1; $volt_mv * $mag / 1000000" | bc 2>/dev/null)"
+  if [ "$plugged" = 1 ] && [ "$chg" = 1 ]; then power_line="Charging at ${w} W"
+  elif [ "$plugged" != 1 ]; then power_line="Using ${w} W"; fi
+fi
+if [ "$plugged" = 1 ] && { [ -n "$aname" ] || [ -n "$awatts" ]; }; then
+  adapter_line="Adapter: ${aname:-${awatts} W}"
+fi
+parts=""
+[ -n "$temp100" ] && parts="$(( temp100 / 100 ))°C"
+[ -n "$volt_mv" ] && { v="$(echo "scale=1; $volt_mv / 1000" | bc 2>/dev/null)"; parts="${parts:+$parts · }${v} V"; }
+[ -n "$rawcur" ] && [ -n "$rawmax" ] && parts="${parts:+$parts · }${rawcur} / ${rawmax} mAh"
+extras_line="$parts"
+
 echo "---"
 printf 'Battery: %s\n' "${pct:-n/a}"
 printf '%s\n' "$detail"
+[ -n "$health_line" ]  && printf '%s\n' "$health_line"
+[ -n "$power_line" ]   && printf '%s\n' "$power_line"
+[ -n "$adapter_line" ] && printf '%s\n' "$adapter_line"
+[ -n "$extras_line" ]  && printf '%s\n' "$extras_line"
 echo "---"
 printf 'Open Battery Settings... | shell=/usr/bin/open param1=%s terminal=false\n' "$SETTINGS_URL"

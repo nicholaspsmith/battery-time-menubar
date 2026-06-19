@@ -86,4 +86,37 @@ else
   printf 'FAIL - mode ordering: Automatic@%s Battery@%s\n' "$a" "$b"; fail=1
 fi
 
+# --- extra battery stats from ioreg (IOREG_FIXTURE pins the raw battery data) ---
+has_io() {
+  local name="$1" pf="$2" iof="$3" needle="$4"
+  if PMSET_FIXTURE="$pf" IOREG_FIXTURE="$iof" "$SCRIPT" | grep -qF -- "$needle"; then
+    printf 'ok   - %s\n' "$name"
+  else
+    printf 'FAIL - %s: output missing [%s]\n' "$name" "$needle"; fail=1
+  fi
+}
+IOREG_CHG='    "CycleCount" = 11
+    "DesignCapacity" = 8579
+    "AppleRawMaxCapacity" = 8682
+    "AppleRawCurrentCapacity" = 8318
+    "Voltage" = 13136
+    "InstantAmperage" = 2917
+    "Temperature" = 3026
+    "AdapterDetails" = {"Watts"=140,"Name"="140W USB-C Power Adapter"}'
+# InstantAmperage here is the unsigned (two'\''s-complement) form of -2204 mA.
+IOREG_BAT='    "CycleCount" = 11
+    "DesignCapacity" = 8579
+    "AppleRawMaxCapacity" = 8682
+    "AppleRawCurrentCapacity" = 5000
+    "Voltage" = 12000
+    "InstantAmperage" = 18446744073709549412
+    "Temperature" = 3100'
+
+has_io "stat: health + cycles"    "$CHARGING"    "$IOREG_CHG" "Health: 100% (11 cycles)"
+has_io "stat: charging watts"     "$CHARGING"    "$IOREG_CHG" "Charging at 38.3 W"
+has_io "stat: adapter name"       "$CHARGING"    "$IOREG_CHG" "Adapter: 140W USB-C Power Adapter"
+has_io "stat: extras (charging)"  "$CHARGING"    "$IOREG_CHG" "30°C · 13.1 V · 8318 / 8682 mAh"
+has_io "stat: using watts (batt)" "$DISCHARGING" "$IOREG_BAT" "Using 26.4 W"
+has_io "stat: extras (battery)"   "$DISCHARGING" "$IOREG_BAT" "31°C · 12.0 V · 5000 / 8682 mAh"
+
 exit $fail

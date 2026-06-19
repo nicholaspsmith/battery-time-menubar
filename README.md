@@ -31,6 +31,8 @@ to Ice's hidden section).
   the active mode checkmarked; selecting one sets it for the current power source
 - Battery percentage
 - A detailed status line — `3 hr 14 min until empty`, `Charging - 1 hr 20 min until full`, `Fully charged`, …
+- Extra stats (one `ioreg` call): health + cycle count, live power draw (V×A),
+  adapter wattage, and temperature / voltage / raw charge (mAh)
 - **Open Battery Settings...** — opens the Battery pane in System Settings
 
 ## Updates
