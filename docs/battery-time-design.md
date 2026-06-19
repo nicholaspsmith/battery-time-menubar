@@ -27,18 +27,19 @@ A SwiftBar plugin plus a launchd watcher, in a dedicated repo at
 
 | Power state | Title |
 | --- | --- |
-| On battery, has estimate | `3:14` (time to empty) |
-| On battery, no estimate | `--:--` |
-| Charging, has estimate | bolt + `1:20` (time to full) |
-| Charged / plugged-in / not-charging | bolt only |
+| On battery | battery glyph (fill ∝ charge) + ETA; **red** fill ≤20% |
+| Charging / plugged | glyph + charging bolt + time-to-full |
+| Low Power Mode | **yellow** fill |
 
-- The title is rendered as a tight transparent **template image** by the compiled
-  `render-title.swift` helper (bolt `bolt.fill` drawn into the image), emitted as
-  `| templateImage=<base64>` with an empty title — so it sits as closely as the
-  icon-based menu-bar items. SwiftBar pads *text* items wider than image items
-  (issue #228), which is why our lone text item looked over-padded. It falls back
-  to a text title (inline `:bolt.fill:` + `sfsize=9`, default-size digits) when
-  the helper isn't compiled or in tests (`BT_TITLE_TEXT=1`).
+- The title is one tight image from `render-title.swift`: a battery glyph (rounded
+  body + nub, fill proportional to charge, knocked-out charging bolt, optional %
+  inside) composed with the time text. Independent **icon / % / time** toggles via
+  `set-display.sh`. Emitted as `templateImage=` when monochrome (auto-adapts
+  light/dark); when the fill is colored (yellow in Low Power, red when low) only
+  the fill is colored while the outline/text use the label color (`--ink`,
+  detected from light/dark), emitted as `image=`. SwiftBar pads *text* items wider
+  than images (issue #228), which is why the title is an image. Falls back to
+  "pct% time" text when the helper isn't compiled or in tests (`BT_TITLE_TEXT=1`).
 - A meaningful ETA exists only while `discharging` or `charging`; `charged`
   reports a bogus `0:00 remaining`, so the ETA is gated on state.
 - The title is **never empty** — always at least the bolt or `--:--`. This is

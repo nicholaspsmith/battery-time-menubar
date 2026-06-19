@@ -102,22 +102,43 @@ elif [ "$plugged" != 1 ] && [ -n "$pct_num" ] && [ "$pct_num" -le 20 ]; then ico
 fi
 if [ "$plugged" = 1 ]; then mb_time="$time"; else mb_time="${time:-"--:--"}"; fi
 
-if [ -x "$HELPER" ] && [ -z "${BT_TITLE_TEXT:-}" ] && [ -n "$pct_num" ]; then
-  targs=(--battery "$pct_num")
-  [ "$is_charging" = 1 ] && targs+=(--charging)
-  if [ "$icon_color" != none ]; then
-    # only the fill is colored; outline/text stay the label color (detect dark/light)
-    if [ "$(defaults read -g AppleInterfaceStyle 2>/dev/null)" = "Dark" ]; then ink=white; else ink=black; fi
-    targs+=(--fill "$icon_color" --ink "$ink")
+# independent display toggles (env fixtures for tests; persisted by set-display.sh)
+dpref() { local v; v="$(cat "$HOME/.config/battery-time/$1" 2>/dev/null)"; if [ -n "$v" ]; then printf '%s' "$v"; else printf '%s' "$2"; fi; }
+show_icon="${BT_SHOW_ICON:-$(dpref icon 1)}"
+show_pct="${BT_SHOW_PCT:-$(dpref pct 0)}"
+show_time="${BT_SHOW_TIME:-$(dpref time 1)}"
+
+title_fallback() {  # "pct% time" text honoring the toggles (also tested)
+  local f=""
+  { [ "$show_icon" = 1 ] || [ "$show_pct" = 1 ]; } && [ -n "$pct_num" ] && f="${pct_num}%"
+  [ "$show_time" = 1 ] && [ -n "$mb_time" ] && f="${f:+$f }$mb_time"
+  printf '%s\n' "${f:---:--}"
+}
+
+if [ -x "$HELPER" ] && [ -z "${BT_TITLE_TEXT:-}" ]; then
+  targs=(); colored=0
+  if [ "$show_icon" = 1 ] && [ -n "$pct_num" ]; then
+    targs+=(--battery "$pct_num")
+    [ "$show_pct" = 1 ] && targs+=(--battery-pct)
+    [ "$is_charging" = 1 ] && targs+=(--charging)
+    if [ "$icon_color" != none ]; then
+      # only the fill is colored; outline/text keep the label color (detect dark/light)
+      if [ "$(defaults read -g AppleInterfaceStyle 2>/dev/null)" = "Dark" ]; then ink=white; else ink=black; fi
+      targs+=(--fill "$icon_color" --ink "$ink"); colored=1
+    fi
   fi
-  [ -n "$mb_time" ] && targs+=(--text "$mb_time")
+  mb_txt=""
+  [ "$show_pct" = 1 ] && [ "$show_icon" != 1 ] && [ -n "$pct_num" ] && mb_txt="${pct_num}%"
+  [ "$show_time" = 1 ] && [ -n "$mb_time" ] && mb_txt="${mb_txt:+$mb_txt }$mb_time"
+  [ -n "$mb_txt" ] && targs+=(--text "$mb_txt")
+  [ ${#targs[@]} -eq 0 ] && targs+=(--text "${mb_time:---:--}")
   b64="$("$HELPER" "${targs[@]}" 2>/dev/null)"
-  if   [ -n "$b64" ] && [ "$icon_color" != none ]; then printf '| image=%s\n' "$b64"
+  if   [ -n "$b64" ] && [ "$colored" = 1 ]; then printf '| image=%s\n' "$b64"
   elif [ -n "$b64" ]; then printf '| templateImage=%s\n' "$b64"
-  else f="${pct_num:+${pct_num}%}"; [ -n "$mb_time" ] && f="${f:+$f }$mb_time"; printf '%s\n' "${f:---:--}"
+  else title_fallback
   fi
 else
-  f="${pct_num:+${pct_num}%}"; [ -n "$mb_time" ] && f="${f:+$f }$mb_time"; printf '%s\n' "${f:---:--}"
+  title_fallback
 fi
 
 # --- dropdown: %, detail, Battery Settings link ---
@@ -144,6 +165,7 @@ mode_item() {  # <powermode value> <label>
 }
 
 echo "---"
+printf 'Energy Mode | size=12 color=#8e8e93\n'
 mode_item 0 "Automatic"
 mode_item 1 "Low Power"
 mode_item 2 "High Power"
@@ -244,5 +266,13 @@ if [ -n "$tips" ]; then
   echo "---"
   printf 'Battery Life Tips | shell=%s/show-tips.sh terminal=false\n' "$REPO_DIR"
 fi
+ic=""; [ "$show_icon" = 1 ] && ic=" checked=true"
+pc=""; [ "$show_pct" = 1 ] && pc=" checked=true"
+tc=""; [ "$show_time" = 1 ] && tc=" checked=true"
+echo "---"
+echo "Menu bar shows..."
+printf -- '-- Battery icon | shell=%s/set-display.sh param1=icon terminal=false refresh=true%s\n' "$REPO_DIR" "$ic"
+printf -- '-- Percentage | shell=%s/set-display.sh param1=pct terminal=false refresh=true%s\n' "$REPO_DIR" "$pc"
+printf -- '-- Time remaining | shell=%s/set-display.sh param1=time terminal=false refresh=true%s\n' "$REPO_DIR" "$tc"
 echo "---"
 printf 'Open Battery Settings... | shell=/usr/bin/open param1=%s terminal=false\n' "$SETTINGS_URL"

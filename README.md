@@ -7,28 +7,22 @@ a details dropdown.
 
 ## What it shows
 
-**Menu bar:**
+**Menu bar** — a native-style **battery glyph** whose fill is proportional to
+charge, with a charging bolt and the time remaining beside it. Drawn as one tight
+image by the compiled `render-title` helper, so it spaces like the native icon.
 
-| State | Shows |
-| --- | --- |
-| On battery | the ETA only, e.g. `3:14` (time to empty) |
-| On battery, still estimating | `--:--` |
-| Charging | bolt + time-to-full, e.g. bolt `1:20` |
-| Charged / plugged in (no estimate) | bolt only |
-
-The title is drawn as a tight transparent **template image** by the compiled
-`render-title` helper (rather than as text — SwiftBar pads text items wider than
-icon items), so it sits as closely as the native icons and still adapts to
-light/dark automatically. The bolt is SF Symbol `bolt.fill` drawn into that
-image. If the helper isn't compiled, the plugin falls back to a text title
-(slightly wider). The item always renders something, so it never disappears and
-keeps its position in menu-bar managers like Ice (a vanishing item gets re-added
-to Ice's hidden section).
+- Monochrome and auto-adapting to light/dark normally; in **Low Power Mode** the
+  fill turns **yellow** and when **low on battery** (≤20%) it turns **red** —
+  only the fill is colored, the outline and text keep the label color.
+- Independent **icon / percentage / time** toggles ("Menu bar shows…" in the
+  dropdown); the percentage can be drawn **inside** the glyph.
+- Falls back to "pct% time" text if `render-title` isn't compiled. Always renders
+  something, so it keeps its position in menu-bar managers like Ice.
 
 **Dropdown** (click the item; SwiftBar's own default items are hidden — Option-click reveals them):
 
-- **Energy mode** selector at the top — Automatic / Low Power / High Power, with
-  the active mode checkmarked; selecting one sets it for the current power source
+- A native-style **Energy Mode** section at the top — Automatic / Low Power /
+  High Power, the active one checkmarked; selecting one sets `pmset powermode`
 - Battery percentage
 - A detailed status line — `3 hr 14 min until empty`, `Charging - 1 hr 20 min until full`, `Fully charged`, …
 - Extra stats (one `ioreg` call): health + cycle count, live power draw (V×A),
@@ -39,6 +33,7 @@ to Ice's hidden section).
 - Battery-longevity **tips** — a "Battery Life Tips" item (shown only when a
   trigger fires: deep discharges, prolonged high charge, running warm, or cycle
   count near rated life) that opens a dialog with the advice (keeps the dropdown narrow)
+- **Menu bar shows…** — toggle the battery icon / percentage / time independently
 - **Open Battery Settings...** — opens the Battery pane in System Settings
 
 ## Updates
@@ -107,12 +102,13 @@ sudo rm -f /etc/sudoers.d/battery-time-powermode
 ## Files
 
 - `battery-time.5s.sh` — the SwiftBar plugin (menu-bar title + dropdown)
-- `render-title.swift` — compiles to `bin/render-title`, renders the title to a tight template image
 - `power-watch.sh` — `pmset -g pslog` watcher for instant plug/unplug refresh
 - `com.nicholassmith.battery-time-power-watch.plist` — launchd agent template
 - `install.sh` — installer (plugin symlink + launchd agent)
 - `install-powermode-sudoers.sh` — one-time passwordless-sudo rule for the toggle
+- `render-title.swift` — compiles to `bin/render-title`; draws the battery glyph + text
 - `set-tempunit.sh` — persists the dropdown °C/°F temperature unit
+- `set-display.sh` — toggles the menu-bar icon / percentage / time prefs
 - `show-tips.sh` — opens the current battery-longevity tips in a dialog
 - `test/test_battery_time.sh` — fixture tests
 - `docs/` — design notes and plan

@@ -5,6 +5,7 @@ set -u
 SCRIPT="$(cd "$(dirname "$0")/.." && pwd)/battery-time.5s.sh"
 export BT_TITLE_TEXT=1   # assert the text-form title (image bytes aren't deterministic)
 export TEMPUNIT_FIXTURE=C # deterministic temperature unit for tests
+export BT_SHOW_ICON=1 BT_SHOW_PCT=0 BT_SHOW_TIME=1  # deterministic menu-bar display prefs
 fail=0
 
 # check the menu-bar TITLE (first line; the rest of the output is the dropdown).
@@ -186,5 +187,18 @@ tip_fires "tip: cycle near rated" "$CHARGING"    "$IOREG_OLD" "1000 2000 50 0 0"
 tip_has   "tips item appears"     "$DISCHARGING" "$IOREG_BAT" "1000 2000 9 0 3"      "Battery Life Tips"
 tip_hasnt "no tips item healthy"  "$CHARGING"    "$IOREG_CHG" "1000 2000 60 0 0"     "Battery Life Tips"
 tip_hasnt "tip text not inline"   "$DISCHARGING" "$IOREG_BAT" "1000 2000 9 0 3"      "You dropped to 9%"
+
+# --- menu-bar display toggles (icon / % / time) + native Energy Mode header ---
+title_pref() {  # name pmset icon pct time expected-first-line
+  local got; got="$(PMSET_FIXTURE="$2" BT_SHOW_ICON="$3" BT_SHOW_PCT="$4" BT_SHOW_TIME="$5" "$SCRIPT" | head -1)"
+  if [ "$got" = "$6" ]; then printf 'ok   - %s\n' "$1"; else printf 'FAIL - %s: expected [%s] got [%s]\n' "$1" "$6" "$got"; fail=1; fi
+}
+title_pref "display: icon+time"     "$DISCHARGING" 1 0 1 "22% 1:52"
+title_pref "display: icon only"     "$DISCHARGING" 1 0 0 "22%"
+title_pref "display: time only"     "$DISCHARGING" 0 0 1 "1:52"
+title_pref "display: pct+time"      "$DISCHARGING" 0 1 1 "22% 1:52"
+title_pref "display: none -> --:--" "$DISCHARGING" 0 0 0 "--:--"
+has "energy mode header"    "$DISCHARGING" "Energy Mode"
+has "display toggle items"  "$DISCHARGING" "set-display.sh param1=icon"
 
 exit $fail
