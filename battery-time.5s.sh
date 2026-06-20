@@ -108,17 +108,11 @@ if [ -n "$time" ]; then
   if [ "$h" -gt 0 ]; then human="${h} hr ${m} min"; else human="${m} min"; fi
 fi
 
-# --- menu bar title: native-style battery glyph + ETA time ---
-# Drawn as one tight image by render-title (so it spaces like the native icon).
-# Native colors: yellow in Low Power Mode, red when low on battery, else mono.
-# Falls back to "pct% time" text when the renderer isn't compiled / under tests.
+# --- menu bar title: bolt + time remaining (toggleable) ---
+# A bolt icon + ETA, drawn as one tight monochrome image by render-title (falls
+# back to inline ":bolt.fill: time" text). icon / % / time are independent toggles.
 pct_num="${pct%\%}"
 cur_pm="${POWERMODE_FIXTURE:-$(pmset -g | awk '/^[[:space:]]*powermode[[:space:]]/{print $2; exit}')}"
-if [ "$status" = "Charging" ]; then is_charging=1; else is_charging=0; fi
-icon_color="none"
-if [ "$cur_pm" = "1" ]; then icon_color="yellow"
-elif [ "$plugged" != 1 ] && [ -n "$pct_num" ] && [ "$pct_num" -le 20 ]; then icon_color="red"
-fi
 if [ "$plugged" = 1 ]; then mb_time="$time"; else mb_time="${time:-"--:--"}"; fi
 
 # independent display toggles (env fixtures for tests; persisted by set-display.sh)
@@ -127,35 +121,26 @@ show_icon="${BT_SHOW_ICON:-$(dpref icon 1)}"
 show_pct="${BT_SHOW_PCT:-$(dpref pct 0)}"
 show_time="${BT_SHOW_TIME:-$(dpref time 1)}"
 
-title_fallback() {  # "pct% time" text honoring the toggles (also tested)
+# text part: pct% (optional) + time (optional)
+mb_txt=""
+[ "$show_pct" = 1 ] && [ -n "$pct_num" ] && mb_txt="${pct_num}%"
+[ "$show_time" = 1 ] && [ -n "$mb_time" ] && mb_txt="${mb_txt:+$mb_txt }$mb_time"
+
+title_fallback() {
   local f=""
-  { [ "$show_icon" = 1 ] || [ "$show_pct" = 1 ]; } && [ -n "$pct_num" ] && f="${pct_num}%"
-  [ "$show_time" = 1 ] && [ -n "$mb_time" ] && f="${f:+$f }$mb_time"
-  printf '%s\n' "${f:---:--}"
+  [ "$show_icon" = 1 ] && f=":bolt.fill:"
+  [ -n "$mb_txt" ] && f="${f:+$f }$mb_txt"
+  [ -z "$f" ] && f="--:--"
+  if [ "$show_icon" = 1 ]; then printf '%s | sfsize=9\n' "$f"; else printf '%s\n' "$f"; fi
 }
 
 if [ -x "$HELPER" ] && [ -z "${BT_TITLE_TEXT:-}" ]; then
-  targs=(); colored=0
-  if [ "$show_icon" = 1 ] && [ -n "$pct_num" ]; then
-    targs+=(--battery "$pct_num")
-    [ "$show_pct" = 1 ] && targs+=(--battery-pct)
-    [ "$is_charging" = 1 ] && targs+=(--charging)
-    if [ "$icon_color" != none ]; then
-      # only the fill is colored; outline/text keep the label color (detect dark/light)
-      if [ "$(defaults read -g AppleInterfaceStyle 2>/dev/null)" = "Dark" ]; then ink=white; else ink=black; fi
-      targs+=(--fill "$icon_color" --ink "$ink"); colored=1
-    fi
-  fi
-  mb_txt=""
-  [ "$show_pct" = 1 ] && [ "$show_icon" != 1 ] && [ -n "$pct_num" ] && mb_txt="${pct_num}%"
-  [ "$show_time" = 1 ] && [ -n "$mb_time" ] && mb_txt="${mb_txt:+$mb_txt }$mb_time"
-  [ -n "$mb_txt" ] && targs+=(--text "$mb_txt")
-  [ ${#targs[@]} -eq 0 ] && targs+=(--text "${mb_time:---:--}")
+  targs=()
+  [ "$show_icon" = 1 ] && targs+=(--bolt)
+  if [ -n "$mb_txt" ]; then targs+=(--text "$mb_txt")
+  elif [ "$show_icon" != 1 ]; then targs+=(--text "--:--"); fi
   b64="$("$HELPER" "${targs[@]}" 2>/dev/null)"
-  if   [ -n "$b64" ] && [ "$colored" = 1 ]; then printf '| image=%s\n' "$b64"
-  elif [ -n "$b64" ]; then printf '| templateImage=%s\n' "$b64"
-  else title_fallback
-  fi
+  if [ -n "$b64" ]; then printf '| templateImage=%s\n' "$b64"; else title_fallback; fi
 else
   title_fallback
 fi

@@ -54,13 +54,13 @@ CHARGED="Now drawing from 'AC Power'
 ACHOLD="Now drawing from 'AC Power'
  -InternalBattery-0 (id=50921571)	80%; AC attached; not charging present: true"
 
-# Menu-bar title falls back to "pct% time" text under BT_TITLE_TEXT; the live
-# path draws the battery glyph image instead.
-check "on battery: pct + ETA"        "$DISCHARGING" "22% 1:52"
-check "on battery, no estimate"      "$NOEST"       "50% --:--"
-check "charging: pct + time-to-full" "$CHARGING"    "80% 1:20"
-check "charged: pct only"            "$CHARGED"     "100%"
-check "ac hold: pct only"            "$ACHOLD"      "80%"
+# Menu-bar title falls back to ":bolt.fill: time" text under BT_TITLE_TEXT; the
+# live path draws the bolt + time as one image.
+check "on battery: bolt + ETA"        "$DISCHARGING" ":bolt.fill: 1:52 | sfsize=9"
+check "on battery, no estimate"       "$NOEST"       ":bolt.fill: --:-- | sfsize=9"
+check "charging: bolt + time-to-full" "$CHARGING"    ":bolt.fill: 1:20 | sfsize=9"
+check "charged: bolt only"            "$CHARGED"     ":bolt.fill: | sfsize=9"
+check "ac hold: bolt only"            "$ACHOLD"      ":bolt.fill: | sfsize=9"
 
 # dropdown content
 has "dropdown: battery percentage"    "$DISCHARGING" "Battery: 22%"
@@ -193,8 +193,8 @@ title_pref() {  # name pmset icon pct time expected-first-line
   local got; got="$(PMSET_FIXTURE="$2" BT_SHOW_ICON="$3" BT_SHOW_PCT="$4" BT_SHOW_TIME="$5" "$SCRIPT" | head -1)"
   if [ "$got" = "$6" ]; then printf 'ok   - %s\n' "$1"; else printf 'FAIL - %s: expected [%s] got [%s]\n' "$1" "$6" "$got"; fail=1; fi
 }
-title_pref "display: icon+time"     "$DISCHARGING" 1 0 1 "22% 1:52"
-title_pref "display: icon only"     "$DISCHARGING" 1 0 0 "22%"
+title_pref "display: bolt+time"     "$DISCHARGING" 1 0 1 ":bolt.fill: 1:52 | sfsize=9"
+title_pref "display: bolt only"     "$DISCHARGING" 1 0 0 ":bolt.fill: | sfsize=9"
 title_pref "display: time only"     "$DISCHARGING" 0 0 1 "1:52"
 title_pref "display: pct+time"      "$DISCHARGING" 0 1 1 "22% 1:52"
 title_pref "display: none -> --:--" "$DISCHARGING" 0 0 0 "--:--"
@@ -211,7 +211,7 @@ IOREG_EST='    "AppleRawCurrentCapacity" = 5000
     "AppleRawMaxCapacity" = 8682
     "Voltage" = 12000'
 got="$(PMSET_FIXTURE="$NOEST_AMP" IOREG_FIXTURE="$IOREG_EST" "$SCRIPT" | head -1)"
-if [ "$got" = "50% 2:00" ]; then printf 'ok   - gap estimate (5000mAh / 2500mA -> 2:00)\n'
-else printf 'FAIL - gap estimate: expected [50%% 2:00] got [%s]\n' "$got"; fail=1; fi
+if [ "$got" = ":bolt.fill: 2:00 | sfsize=9" ]; then printf 'ok   - gap estimate (5000mAh / 2500mA -> 2:00)\n'
+else printf 'FAIL - gap estimate: expected [:bolt.fill: 2:00 | sfsize=9] got [%s]\n' "$got"; fail=1; fi
 
 exit $fail

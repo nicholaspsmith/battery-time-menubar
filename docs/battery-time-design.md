@@ -27,19 +27,16 @@ A SwiftBar plugin plus a launchd watcher, in a dedicated repo at
 
 | Power state | Title |
 | --- | --- |
-| On battery | battery glyph (fill ∝ charge) + ETA; **red** fill ≤20% |
-| Charging / plugged | glyph + charging bolt + time-to-full |
-| Low Power Mode | **yellow** fill |
+| On battery / charging | bolt + ETA (to-empty / to-full) |
+| No estimate (e.g. charged) | bolt only |
 
-- The title is one tight image from `render-title.swift`: a battery glyph (rounded
-  body + nub, fill proportional to charge, knocked-out charging bolt, optional %
-  inside) composed with the time text. Independent **icon / % / time** toggles via
-  `set-display.sh`. Emitted as `templateImage=` when monochrome (auto-adapts
-  light/dark); when the fill is colored (yellow in Low Power, red when low) only
-  the fill is colored while the outline/text use the label color (`--ink`,
-  detected from light/dark), emitted as `image=`. SwiftBar pads *text* items wider
-  than images (issue #228), which is why the title is an image. Falls back to
-  "pct% time" text when the helper isn't compiled or in tests (`BT_TITLE_TEXT=1`).
+- The title is one tight monochrome image from `render-title.swift`: a `bolt.fill`
+  + the time text, emitted as `templateImage=` so it auto-adapts to light/dark and
+  spaces like the native icons (SwiftBar pads *text* items wider than images, issue
+  #228). Independent **icon / % / time** toggles via `set-display.sh`. Falls back to
+  ":bolt.fill: time" text when the helper isn't compiled or in tests
+  (`BT_TITLE_TEXT=1`). `render-title.swift` retains a colored battery-glyph mode
+  (`--battery`/`--fill`/`--ink`) that the plugin no longer uses.
 - A meaningful ETA exists only while `discharging` or `charging`; `charged`
   reports a bogus `0:00 remaining`, so the ETA is gated on state.
 - macOS reports `(no estimate)` for ~30–60s after unplug. To avoid showing `--:--`
