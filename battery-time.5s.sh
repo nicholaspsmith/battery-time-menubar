@@ -82,6 +82,25 @@ else
   status="On battery"
 fi
 
+# Battery data from ioreg (one call; IOREG_FIXTURE seam). Captured here so both
+# the menu-bar gap-estimate and the dropdown stats can use it.
+ioreg_out="${IOREG_FIXTURE:-$(ioreg -rn AppleSmartBattery 2>/dev/null)}"
+ival() { printf '%s\n' "$ioreg_out" | sed -n "s/^[[:space:]]*\"$1\" = \(-*[0-9][0-9]*\).*/\1/p" | head -n1; }
+cyc="$(ival CycleCount)"; design="$(ival DesignCapacity)"; rawmax="$(ival AppleRawMaxCapacity)"
+rawcur="$(ival AppleRawCurrentCapacity)"; volt_mv="$(ival Voltage)"; amp="$(ival InstantAmperage)"; temp100="$(ival Temperature)"
+aname="$(printf '%s\n' "$ioreg_out" | sed -n 's/.*"AdapterDetails".*"Name"="\([^"]*\)".*/\1/p' | head -n1)"
+awatts="$(printf '%s\n' "$ioreg_out" | sed -n 's/.*"AdapterDetails".*"Watts"=\([0-9][0-9]*\).*/\1/p' | head -n1)"
+
+# macOS doesn't compute a time estimate for ~30-60s after unplug; fill that gap
+# with our own (remaining mAh / discharge mA) so a time shows immediately.
+if [ "$plugged" != 1 ] && [ -z "$time" ] && [ -n "$rawcur" ] && [ -n "$amp" ] && [ "${#amp}" -ge 11 ]; then
+  dmag="$(echo "18446744073709551616 - $amp" | bc 2>/dev/null)"
+  if [ -n "$dmag" ] && [ "$dmag" -gt 0 ] 2>/dev/null; then
+    emins=$(( rawcur * 60 / dmag ))
+    time="$(( emins / 60 )):$(printf '%02d' "$(( emins % 60 ))")"
+  fi
+fi
+
 # Humanize H:MM -> "X hr Y min" / "Y min".
 human=""
 if [ -n "$time" ]; then
@@ -169,14 +188,7 @@ printf 'Energy Mode | size=12 color=#8e8e93\n'
 mode_item 0 "Automatic"
 mode_item 1 "Low Power"
 mode_item 2 "High Power"
-# --- extra battery stats from ioreg (one call; IOREG_FIXTURE seam for tests) ---
-ioreg_out="${IOREG_FIXTURE:-$(ioreg -rn AppleSmartBattery 2>/dev/null)}"
-ival() { printf '%s\n' "$ioreg_out" | sed -n "s/^[[:space:]]*\"$1\" = \(-*[0-9][0-9]*\).*/\1/p" | head -n1; }
-cyc="$(ival CycleCount)"; design="$(ival DesignCapacity)"; rawmax="$(ival AppleRawMaxCapacity)"
-rawcur="$(ival AppleRawCurrentCapacity)"; volt_mv="$(ival Voltage)"; amp="$(ival InstantAmperage)"; temp100="$(ival Temperature)"
-aname="$(printf '%s\n' "$ioreg_out" | sed -n 's/.*"AdapterDetails".*"Name"="\([^"]*\)".*/\1/p' | head -n1)"
-awatts="$(printf '%s\n' "$ioreg_out" | sed -n 's/.*"AdapterDetails".*"Watts"=\([0-9][0-9]*\).*/\1/p' | head -n1)"
-
+# --- extra battery stats (ioreg captured above) ---
 health_line=""; power_line=""; adapter_line=""; extras_line=""
 if [ -n "$rawmax" ] && [ -n "$design" ] && [ "$design" -gt 0 ]; then
   h=$(( rawmax * 100 / design )); [ "$h" -gt 100 ] && h=100

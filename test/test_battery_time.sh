@@ -6,6 +6,7 @@ SCRIPT="$(cd "$(dirname "$0")/.." && pwd)/battery-time.5s.sh"
 export BT_TITLE_TEXT=1   # assert the text-form title (image bytes aren't deterministic)
 export TEMPUNIT_FIXTURE=C # deterministic temperature unit for tests
 export BT_SHOW_ICON=1 BT_SHOW_PCT=0 BT_SHOW_TIME=1  # deterministic menu-bar display prefs
+export IOREG_FIXTURE='-'  # neutral ioreg (no battery data) unless a test overrides it
 fail=0
 
 # check the menu-bar TITLE (first line; the rest of the output is the dropdown).
@@ -199,5 +200,18 @@ title_pref "display: pct+time"      "$DISCHARGING" 0 1 1 "22% 1:52"
 title_pref "display: none -> --:--" "$DISCHARGING" 0 0 0 "--:--"
 has "energy mode header"    "$DISCHARGING" "Energy Mode"
 has "display toggle items"  "$DISCHARGING" "set-display.sh param1=icon"
+
+# gap estimate: when macOS reports "(no estimate)" on battery, compute our own
+# (remaining mAh / discharge mA). 5000 mAh / 2500 mA = 2.0 h = 2:00.
+NOEST_AMP="Now drawing from 'Battery Power'
+ -InternalBattery-0 (id=1)	50%; discharging; (no estimate) present: true"
+IOREG_EST='    "AppleRawCurrentCapacity" = 5000
+    "InstantAmperage" = 18446744073709549116
+    "DesignCapacity" = 8579
+    "AppleRawMaxCapacity" = 8682
+    "Voltage" = 12000'
+got="$(PMSET_FIXTURE="$NOEST_AMP" IOREG_FIXTURE="$IOREG_EST" "$SCRIPT" | head -1)"
+if [ "$got" = "50% 2:00" ]; then printf 'ok   - gap estimate (5000mAh / 2500mA -> 2:00)\n'
+else printf 'FAIL - gap estimate: expected [50%% 2:00] got [%s]\n' "$got"; fail=1; fi
 
 exit $fail

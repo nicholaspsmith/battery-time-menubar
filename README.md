@@ -16,6 +16,9 @@ image by the compiled `render-title` helper, so it spaces like the native icon.
   only the fill is colored, the outline and text keep the label color.
 - Independent **icon / percentage / time** toggles ("Menu bar shows…" in the
   dropdown); the percentage can be drawn **inside** the glyph.
+- Right after unplug macOS takes ~30–60s to compute its time estimate; until then
+  the plugin shows its **own** estimate (remaining mAh ÷ discharge mA from
+  `ioreg`) so a time appears immediately instead of `--:--`.
 - Falls back to "pct% time" text if `render-title` isn't compiled. Always renders
   something, so it keeps its position in menu-bar managers like Ice.
 

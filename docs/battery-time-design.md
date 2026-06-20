@@ -42,6 +42,10 @@ A SwiftBar plugin plus a launchd watcher, in a dedicated repo at
   "pct% time" text when the helper isn't compiled or in tests (`BT_TITLE_TEXT=1`).
 - A meaningful ETA exists only while `discharging` or `charging`; `charged`
   reports a bogus `0:00 remaining`, so the ETA is gated on state.
+- macOS reports `(no estimate)` for ~30–60s after unplug. To avoid showing `--:--`
+  that whole time, on battery with no `pmset` estimate the plugin computes its own
+  from `ioreg`: remaining `AppleRawCurrentCapacity` (mAh) ÷ |`InstantAmperage`|
+  (mA), in minutes. It's superseded by the macOS estimate once that appears.
 - The title is **never empty** — always at least the bolt or `--:--`. This is
   what keeps the item from disappearing and being re-added to Ice's hidden
   section.
