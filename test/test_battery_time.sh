@@ -55,7 +55,7 @@ ACHOLD="Now drawing from 'AC Power'
  -InternalBattery-0 (id=50921571)	80%; AC attached; not charging present: true"
 
 # Title fallback under BT_TITLE_TEXT: battery glyph -> "pct% time"; charging -> bolt.
-check "on battery: glyph + ETA"       "$DISCHARGING" "22% 1:52"
+check "on battery: glyph + ETA"       "$DISCHARGING" "22% 1:46"
 check "on battery, no estimate"       "$NOEST"       "50% --:--"
 check "charging: bolt + time-to-full" "$CHARGING"    ":bolt.fill: 1:20 | sfsize=9"
 check "charged: glyph (pct)"          "$CHARGED"     "100%"
@@ -63,7 +63,7 @@ check "ac hold: glyph (pct)"          "$ACHOLD"      "80%"
 
 # dropdown content
 has "dropdown: battery percentage"    "$DISCHARGING" "Battery: 22%"
-has "dropdown: time-to-empty detail"  "$DISCHARGING" "1 hr 52 min until empty"
+has "dropdown: time-to-empty detail"  "$DISCHARGING" "1 hr 46 min until empty"
 has "dropdown: charging detail"       "$CHARGING"    "Charging - 1 hr 20 min until full"
 has "dropdown: charged detail"        "$CHARGED"     "Fully charged"
 has "dropdown: battery settings link" "$DISCHARGING" "com.apple.Battery-Settings.extension"
@@ -192,10 +192,10 @@ title_pref() {  # name pmset icon pct time expected-first-line
   local got; got="$(PMSET_FIXTURE="$2" BT_SHOW_ICON="$3" BT_SHOW_PCT="$4" BT_SHOW_TIME="$5" "$SCRIPT" | head -1)"
   if [ "$got" = "$6" ]; then printf 'ok   - %s\n' "$1"; else printf 'FAIL - %s: expected [%s] got [%s]\n' "$1" "$6" "$got"; fail=1; fi
 }
-title_pref "display: glyph+time"    "$DISCHARGING" 1 0 1 "22% 1:52"
+title_pref "display: glyph+time"    "$DISCHARGING" 1 0 1 "22% 1:46"
 title_pref "display: glyph only"    "$DISCHARGING" 1 0 0 "22%"
-title_pref "display: time only"     "$DISCHARGING" 0 0 1 "1:52"
-title_pref "display: pct+time"      "$DISCHARGING" 0 1 1 "22% 1:52"
+title_pref "display: time only"     "$DISCHARGING" 0 0 1 "1:46"
+title_pref "display: pct+time"      "$DISCHARGING" 0 1 1 "22% 1:46"
 title_pref "display: none -> --:--" "$DISCHARGING" 0 0 0 "--:--"
 has "energy mode header"    "$DISCHARGING" "Energy Mode"
 has "display toggle items"  "$DISCHARGING" "set-display.sh param1=icon"
@@ -227,10 +227,10 @@ IOREG_IDLE='    "AppleRawCurrentCapacity" = 8000
     "AppleRawMaxCapacity" = 8682'
 got="$(PMSET_FIXTURE="$NOEST_AMP" IOREG_FIXTURE="$IOREG_IDLE" "$SCRIPT" | head -1)"
 [ "$got" = "50% 8h" ] && printf 'ok   - nominal estimate (draw=0) -> 8h\n' || { printf 'FAIL - nominal estimate: expected [50%% 8h] got [%s]\n' "$got"; fail=1; }
-# macOS's own estimate is NOT capped (only our stop-gap is): pmset 20:00 -> 20h
+# macOS's own estimate is NOT capped, but is scaled to 95%: pmset 20:00 -> 19:00 -> 19h
 PMSET_HIGH="Now drawing from 'Battery Power'
  -InternalBattery-0 (id=1)	50%; discharging; 20:00 remaining present: true"
 got="$(PMSET_FIXTURE="$PMSET_HIGH" IOREG_FIXTURE="$IOREG_IDLE_LOW" "$SCRIPT" | head -1)"
-[ "$got" = "50% 20h" ] && printf 'ok   - macOS 20:00 estimate shown as-is -> 20h\n' || { printf 'FAIL - macOS uncapped: expected [50%% 20h] got [%s]\n' "$got"; fail=1; }
+[ "$got" = "50% 19h" ] && printf 'ok   - macOS 20:00 -> 95%% -> 19h (uncapped)\n' || { printf 'FAIL - macOS 95%%: expected [50%% 19h] got [%s]\n' "$got"; fail=1; }
 
 exit $fail

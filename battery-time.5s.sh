@@ -63,7 +63,15 @@ pct="$(printf '%s\n' "$line" | grep -Eo '[0-9]+%' | head -n1)"
 # a bogus "0:00 remaining", and "not charging" has no time at all.
 time=""
 case "$line" in
-  *discharging*|*charging*)
+  *discharging*)
+    time="$(printf '%s\n' "$line" | grep -Eo '[0-9]{1,2}:[0-9]{2}' | head -n1)"
+    # show 95% of macOS's remaining estimate (it tends to run a little optimistic)
+    if [ -n "$time" ]; then
+      tmin=$(( (10#${time%%:*} * 60 + 10#${time##*:}) * 95 / 100 ))
+      time="$(( tmin / 60 )):$(printf '%02d' "$(( tmin % 60 ))")"
+    fi
+    ;;
+  *charging*)
     time="$(printf '%s\n' "$line" | grep -Eo '[0-9]{1,2}:[0-9]{2}' | head -n1)"
     ;;
 esac
