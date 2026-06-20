@@ -108,12 +108,22 @@ if [ -n "$time" ]; then
   if [ "$h" -gt 0 ]; then human="${h} hr ${m} min"; else human="${m} min"; fi
 fi
 
-# --- menu bar title: bolt + time remaining (toggleable) ---
-# A bolt icon + ETA, drawn as one tight monochrome image by render-title (falls
-# back to inline ":bolt.fill: time" text). icon / % / time are independent toggles.
+# --- menu bar title ---
+# Battery glyph by default (fill ∝ charge; yellow in Low Power, red when low on
+# battery); a bolt ONLY while actively charging (bolt = plugged-in-and-charging).
+# One tight image via render-title; falls back to text. icon/%/time are toggles.
 pct_num="${pct%\%}"
 cur_pm="${POWERMODE_FIXTURE:-$(pmset -g | awk '/^[[:space:]]*powermode[[:space:]]/{print $2; exit}')}"
+if [ "$status" = "Charging" ]; then is_charging=1; else is_charging=0; fi
 if [ "$plugged" = 1 ]; then mb_time="$time"; else mb_time="${time:-"--:--"}"; fi
+
+# fill color for the battery glyph (the charging bolt is always monochrome)
+icon_color="none"
+if [ "$is_charging" != 1 ]; then
+  if [ "$cur_pm" = "1" ]; then icon_color="yellow"
+  elif [ "$plugged" != 1 ] && [ -n "$pct_num" ] && [ "$pct_num" -le 20 ]; then icon_color="red"
+  fi
+fi
 
 # independent display toggles (env fixtures for tests; persisted by set-display.sh)
 dpref() { local v; v="$(cat "$HOME/.config/battery-time/$1" 2>/dev/null)"; if [ -n "$v" ]; then printf '%s' "$v"; else printf '%s' "$2"; fi; }
@@ -121,26 +131,44 @@ show_icon="${BT_SHOW_ICON:-$(dpref icon 1)}"
 show_pct="${BT_SHOW_PCT:-$(dpref pct 0)}"
 show_time="${BT_SHOW_TIME:-$(dpref time 1)}"
 
-# text part: pct% (optional) + time (optional)
+# is the battery glyph the shown icon? (it can carry the % inside it)
+glyph=0
+[ "$show_icon" = 1 ] && [ "$is_charging" != 1 ] && [ -n "$pct_num" ] && glyph=1
+
+# text part: % as text unless it's drawn inside the glyph; + time
 mb_txt=""
-[ "$show_pct" = 1 ] && [ -n "$pct_num" ] && mb_txt="${pct_num}%"
+[ "$show_pct" = 1 ] && [ -n "$pct_num" ] && [ "$glyph" != 1 ] && mb_txt="${pct_num}%"
 [ "$show_time" = 1 ] && [ -n "$mb_time" ] && mb_txt="${mb_txt:+$mb_txt }$mb_time"
 
 title_fallback() {
   local f=""
-  [ "$show_icon" = 1 ] && f=":bolt.fill:"
-  [ -n "$mb_txt" ] && f="${f:+$f }$mb_txt"
+  [ "$show_icon" = 1 ] && [ "$is_charging" = 1 ] && f=":bolt.fill:"
+  if [ -n "$pct_num" ] && { [ "$glyph" = 1 ] || [ "$show_pct" = 1 ]; }; then f="${f:+$f }${pct_num}%"; fi
+  [ "$show_time" = 1 ] && [ -n "$mb_time" ] && f="${f:+$f }$mb_time"
   [ -z "$f" ] && f="--:--"
-  if [ "$show_icon" = 1 ]; then printf '%s | sfsize=9\n' "$f"; else printf '%s\n' "$f"; fi
+  if [ "$show_icon" = 1 ] && [ "$is_charging" = 1 ]; then printf '%s | sfsize=9\n' "$f"; else printf '%s\n' "$f"; fi
 }
 
 if [ -x "$HELPER" ] && [ -z "${BT_TITLE_TEXT:-}" ]; then
-  targs=()
-  [ "$show_icon" = 1 ] && targs+=(--bolt)
-  if [ -n "$mb_txt" ]; then targs+=(--text "$mb_txt")
-  elif [ "$show_icon" != 1 ]; then targs+=(--text "--:--"); fi
+  targs=(); colored=0
+  if [ "$show_icon" = 1 ]; then
+    if [ "$is_charging" = 1 ]; then targs+=(--bolt)
+    elif [ -n "$pct_num" ]; then
+      targs+=(--battery "$pct_num")
+      [ "$show_pct" = 1 ] && targs+=(--battery-pct)
+      if [ "$icon_color" != none ]; then
+        if [ "$(defaults read -g AppleInterfaceStyle 2>/dev/null)" = "Dark" ]; then ink=white; else ink=black; fi
+        targs+=(--fill "$icon_color" --ink "$ink"); colored=1
+      fi
+    fi
+  fi
+  [ -n "$mb_txt" ] && targs+=(--text "$mb_txt")
+  [ ${#targs[@]} -eq 0 ] && targs+=(--text "${mb_time:---:--}")
   b64="$("$HELPER" "${targs[@]}" 2>/dev/null)"
-  if [ -n "$b64" ]; then printf '| templateImage=%s\n' "$b64"; else title_fallback; fi
+  if   [ -n "$b64" ] && [ "$colored" = 1 ]; then printf '| image=%s\n' "$b64"
+  elif [ -n "$b64" ]; then printf '| templateImage=%s\n' "$b64"
+  else title_fallback
+  fi
 else
   title_fallback
 fi
