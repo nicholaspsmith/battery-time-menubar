@@ -200,27 +200,37 @@ title_pref "display: none -> --:--" "$DISCHARGING" 0 0 0 "--:--"
 has "energy mode header"    "$DISCHARGING" "Energy Mode"
 has "display toggle items"  "$DISCHARGING" "set-display.sh param1=icon"
 
-# gap estimate: when macOS reports "(no estimate)" on battery, compute our own
-# (remaining mAh / discharge mA). 5000 mAh / 2500 mA = 2.0 h = 2:00.
+# gap estimate (capped by a nominal ~12 W; whole hours render as "Nh").
 NOEST_AMP="Now drawing from 'Battery Power'
  -InternalBattery-0 (id=1)	50%; discharging; (no estimate) present: true"
-IOREG_EST='    "AppleRawCurrentCapacity" = 5000
+# measured 5200 mAh / 2500 mA = 2:04 (below the nominal cap) -> "2:04"
+IOREG_MEAS='    "AppleRawCurrentCapacity" = 5200
     "InstantAmperage" = 18446744073709549116
+    "Voltage" = 12000
     "DesignCapacity" = 8579
-    "AppleRawMaxCapacity" = 8682
-    "Voltage" = 12000'
-got="$(PMSET_FIXTURE="$NOEST_AMP" IOREG_FIXTURE="$IOREG_EST" "$SCRIPT" | head -1)"
-if [ "$got" = "50% 2:00" ]; then printf 'ok   - gap estimate (5000mAh / 2500mA -> 2:00)\n'
-else printf 'FAIL - gap estimate: expected [50%% 2:00] got [%s]\n' "$got"; fail=1; fi
-
-# nominal fallback when there's no measurable draw yet (InstantAmperage 0): ~12 W.
+    "AppleRawMaxCapacity" = 8682'
+got="$(PMSET_FIXTURE="$NOEST_AMP" IOREG_FIXTURE="$IOREG_MEAS" "$SCRIPT" | head -1)"
+[ "$got" = "50% 2:04" ] && printf 'ok   - measured estimate 5200mAh/2500mA -> 2:04\n' || { printf 'FAIL - measured estimate: expected [50%% 2:04] got [%s]\n' "$got"; fail=1; }
+# idle 300 mA would project 30h -> capped at nominal (9000 mAh @ 12V = 1000 mA -> 9:00 -> "9h")
+IOREG_IDLE_LOW='    "AppleRawCurrentCapacity" = 9000
+    "InstantAmperage" = 18446744073709551316
+    "Voltage" = 12000
+    "DesignCapacity" = 8579
+    "AppleRawMaxCapacity" = 8682'
+got="$(PMSET_FIXTURE="$NOEST_AMP" IOREG_FIXTURE="$IOREG_IDLE_LOW" "$SCRIPT" | head -1)"
+[ "$got" = "50% 9h" ] && printf 'ok   - idle estimate capped at nominal -> 9h\n' || { printf 'FAIL - capped estimate: expected [50%% 9h] got [%s]\n' "$got"; fail=1; }
+# no measurable draw (0 mA) -> nominal only (8000 mAh @ 12V = 1000 mA -> 8:00 -> "8h")
 IOREG_IDLE='    "AppleRawCurrentCapacity" = 8000
     "InstantAmperage" = 0
     "Voltage" = 12000
     "DesignCapacity" = 8579
     "AppleRawMaxCapacity" = 8682'
 got="$(PMSET_FIXTURE="$NOEST_AMP" IOREG_FIXTURE="$IOREG_IDLE" "$SCRIPT" | head -1)"
-if [ "$got" = "50% 8:00" ]; then printf 'ok   - nominal estimate when draw=0 (8000mAh @ ~12W/12V -> 8:00)\n'
-else printf 'FAIL - nominal estimate: expected [50%% 8:00] got [%s]\n' "$got"; fail=1; fi
+[ "$got" = "50% 8h" ] && printf 'ok   - nominal estimate (draw=0) -> 8h\n' || { printf 'FAIL - nominal estimate: expected [50%% 8h] got [%s]\n' "$got"; fail=1; }
+# macOS's own high (idle) estimate is also capped at the nominal: pmset 20:00 -> 9h
+PMSET_HIGH="Now drawing from 'Battery Power'
+ -InternalBattery-0 (id=1)	50%; discharging; 20:00 remaining present: true"
+got="$(PMSET_FIXTURE="$PMSET_HIGH" IOREG_FIXTURE="$IOREG_IDLE_LOW" "$SCRIPT" | head -1)"
+[ "$got" = "50% 9h" ] && printf 'ok   - macOS 20:00 estimate capped to nominal -> 9h\n' || { printf 'FAIL - macOS cap: expected [50%% 9h] got [%s]\n' "$got"; fail=1; }
 
 exit $fail

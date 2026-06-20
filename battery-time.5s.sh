@@ -92,25 +92,35 @@ aname="$(printf '%s\n' "$ioreg_out" | sed -n 's/.*"AdapterDetails".*"Name"="\([^
 awatts="$(printf '%s\n' "$ioreg_out" | sed -n 's/.*"AdapterDetails".*"Watts"=\([0-9][0-9]*\).*/\1/p' | head -n1)"
 
 # macOS reports "(no estimate)" for ~30-60s after unplug. Show our own right away:
-# from the measured discharge current, or -- when that reads 0 (idle just after
-# unplug) -- from a nominal ~12 W draw. Rough, but better than --:-- immediately.
+# the measured discharge current's projection, else a nominal ~12 W estimate.
 if [ "$plugged" != 1 ] && [ -z "$time" ] && [ -n "$rawcur" ]; then
-  dmag=""
-  [ -n "$amp" ] && [ "${#amp}" -ge 11 ] && dmag="$(echo "18446744073709551616 - $amp" | bc 2>/dev/null)"
-  if ! { [ -n "$dmag" ] && [ "$dmag" -gt 0 ] 2>/dev/null; }; then
-    [ -n "$volt_mv" ] && [ "$volt_mv" -gt 0 ] 2>/dev/null && dmag=$(( 12000000 / volt_mv ))  # ~12 W
+  emins=""
+  if [ -n "$amp" ] && [ "${#amp}" -ge 11 ]; then
+    dmag="$(echo "18446744073709551616 - $amp" | bc 2>/dev/null)"
+    [ -n "$dmag" ] && [ "$dmag" -gt 0 ] 2>/dev/null && emins=$(( rawcur * 60 / dmag ))
   fi
-  if [ -n "$dmag" ] && [ "$dmag" -gt 0 ] 2>/dev/null; then
-    emins=$(( rawcur * 60 / dmag ))
-    time="$(( emins / 60 )):$(printf '%02d' "$(( emins % 60 ))")"
+  if [ -z "$emins" ] && [ -n "$volt_mv" ] && [ "$volt_mv" -gt 0 ] 2>/dev/null; then
+    emins=$(( rawcur * 60 / (12000000 / volt_mv) ))  # nominal ~12 W
   fi
+  [ -n "$emins" ] && time="$(( emins / 60 )):$(printf '%02d' "$(( emins % 60 ))")"
+fi
+
+# Cap any on-battery time (macOS's OR ours) at the nominal ~12 W projection, so a
+# near-zero idle draw can't show an unrealistic 20h+. macOS's lower (in-use)
+# estimates pass through unchanged.
+if [ "$plugged" != 1 ] && [ -n "$time" ] && [ -n "$rawcur" ] && [ -n "$volt_mv" ] && [ "$volt_mv" -gt 0 ] 2>/dev/null; then
+  cap=$(( rawcur * 60 / (12000000 / volt_mv) ))
+  tmin=$(( 10#${time%%:*} * 60 + 10#${time##*:} ))
+  [ "$tmin" -gt "$cap" ] && time="$(( cap / 60 )):$(printf '%02d' "$(( cap % 60 ))")"
 fi
 
 # Humanize H:MM -> "X hr Y min" / "Y min".
 human=""
 if [ -n "$time" ]; then
   h=$((10#${time%%:*})); m=$((10#${time##*:}))
-  if [ "$h" -gt 0 ]; then human="${h} hr ${m} min"; else human="${m} min"; fi
+  if [ "$h" -gt 0 ] && [ "$m" -gt 0 ]; then human="${h} hr ${m} min"
+  elif [ "$h" -gt 0 ]; then human="${h} hr"
+  else human="${m} min"; fi
 fi
 
 # --- menu bar title ---
@@ -121,6 +131,8 @@ pct_num="${pct%\%}"
 cur_pm="${POWERMODE_FIXTURE:-$(pmset -g | awk '/^[[:space:]]*powermode[[:space:]]/{print $2; exit}')}"
 if [ "$status" = "Charging" ]; then is_charging=1; else is_charging=0; fi
 if [ "$plugged" = 1 ]; then mb_time="$time"; else mb_time="${time:-"--:--"}"; fi
+# whole hours show compactly: 20:00 -> 20h
+case "$mb_time" in *:00) mb_time="${mb_time%:00}h" ;; esac
 
 # fill color for the battery glyph (the charging bolt is always monochrome)
 icon_color="none"

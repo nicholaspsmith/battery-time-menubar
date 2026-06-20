@@ -42,9 +42,12 @@ A SwiftBar plugin plus a launchd watcher, in a dedicated repo at
 - macOS reports `(no estimate)` for ~30–60s after unplug. To avoid showing `--:--`
   that whole time, on battery with no `pmset` estimate the plugin computes its own
   from `ioreg`: remaining `AppleRawCurrentCapacity` (mAh) ÷ |`InstantAmperage`|
-  (mA). When the draw reads 0 (idle right after unplug, so neither macOS nor a
-  measured estimate is possible) it falls back to a nominal ~12 W assumption
-  (`current mA = 12000 / volts`). Rough; superseded by the macOS estimate.
+  (mA). When the draw reads 0 (idle right after unplug) it falls back to a nominal
+  ~12 W assumption (`current mA = 12000 / volts`).
+- Any on-battery estimate (macOS's OR ours) is **capped at that nominal**, because
+  a near-zero idle draw projects an unrealistic 20h+. macOS's lower (in-use)
+  estimates pass through unchanged. Whole-hour times render as `8h` (menu bar) /
+  `8 hr` (dropdown).
 - The title is **never empty** — always at least the bolt or `--:--`. This is
   what keeps the item from disappearing and being re-added to Ice's hidden
   section.
