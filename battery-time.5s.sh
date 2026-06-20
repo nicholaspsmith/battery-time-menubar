@@ -91,27 +91,24 @@ rawcur="$(ival AppleRawCurrentCapacity)"; volt_mv="$(ival Voltage)"; amp="$(ival
 aname="$(printf '%s\n' "$ioreg_out" | sed -n 's/.*"AdapterDetails".*"Name"="\([^"]*\)".*/\1/p' | head -n1)"
 awatts="$(printf '%s\n' "$ioreg_out" | sed -n 's/.*"AdapterDetails".*"Watts"=\([0-9][0-9]*\).*/\1/p' | head -n1)"
 
-# macOS reports "(no estimate)" for ~30-60s after unplug. Show our own right away:
-# the measured discharge current's projection, else a nominal ~12 W estimate.
+# macOS reports "(no estimate)" for ~30-60s after unplug. Show our OWN right away:
+# the measured discharge current's projection, capped by a nominal ~12 W estimate
+# (a near-zero idle draw can't project an unrealistic 20h+), or the nominal alone
+# when there's no measurable draw. Only our stop-gap is capped -- once macOS has
+# its own estimate it is shown as-is.
 if [ "$plugged" != 1 ] && [ -z "$time" ] && [ -n "$rawcur" ]; then
-  emins=""
+  nom=""
+  [ -n "$volt_mv" ] && [ "$volt_mv" -gt 0 ] 2>/dev/null && nom=$(( rawcur * 60 / (12000000 / volt_mv) ))  # ~12 W cap
+  meas=""
   if [ -n "$amp" ] && [ "${#amp}" -ge 11 ]; then
     dmag="$(echo "18446744073709551616 - $amp" | bc 2>/dev/null)"
-    [ -n "$dmag" ] && [ "$dmag" -gt 0 ] 2>/dev/null && emins=$(( rawcur * 60 / dmag ))
+    [ -n "$dmag" ] && [ "$dmag" -gt 0 ] 2>/dev/null && meas=$(( rawcur * 60 / dmag ))
   fi
-  if [ -z "$emins" ] && [ -n "$volt_mv" ] && [ "$volt_mv" -gt 0 ] 2>/dev/null; then
-    emins=$(( rawcur * 60 / (12000000 / volt_mv) ))  # nominal ~12 W
-  fi
+  emins=""
+  if   [ -n "$meas" ] && [ -n "$nom" ]; then emins=$(( meas < nom ? meas : nom ))
+  elif [ -n "$meas" ]; then emins="$meas"
+  elif [ -n "$nom" ]; then emins="$nom"; fi
   [ -n "$emins" ] && time="$(( emins / 60 )):$(printf '%02d' "$(( emins % 60 ))")"
-fi
-
-# Cap any on-battery time (macOS's OR ours) at the nominal ~12 W projection, so a
-# near-zero idle draw can't show an unrealistic 20h+. macOS's lower (in-use)
-# estimates pass through unchanged.
-if [ "$plugged" != 1 ] && [ -n "$time" ] && [ -n "$rawcur" ] && [ -n "$volt_mv" ] && [ "$volt_mv" -gt 0 ] 2>/dev/null; then
-  cap=$(( rawcur * 60 / (12000000 / volt_mv) ))
-  tmin=$(( 10#${time%%:*} * 60 + 10#${time##*:} ))
-  [ "$tmin" -gt "$cap" ] && time="$(( cap / 60 )):$(printf '%02d' "$(( cap % 60 ))")"
 fi
 
 # Humanize H:MM -> "X hr Y min" / "Y min".

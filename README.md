@@ -16,10 +16,9 @@ spaces like the native icons.
 - Independent **icon / percentage / time** toggles ("Menu bar shows…" in the dropdown).
 - Right after unplug macOS takes ~30–60s to compute its estimate; until then the
   plugin shows its own (measured discharge, or a nominal ~12 W when idle) so a
-  time appears immediately instead of `--:--`. On-battery estimates — **macOS's
-  included** — are capped at the nominal so a near-zero idle draw can't project an
-  unrealistic 20h+ (macOS's lower in-use estimates pass through unchanged). Whole
-  hours render compactly as `8h`.
+  time appears immediately instead of `--:--`. **Our stop-gap** is capped at the
+  nominal (so a near-zero idle draw can't project an unrealistic 20h+); once
+  macOS has its own estimate it's shown as-is. Whole hours render compactly as `8h`.
 - Falls back to ":bolt.fill: time" text if `render-title` isn't compiled. Always
   renders something, so it keeps its position in menu-bar managers like Ice.
 

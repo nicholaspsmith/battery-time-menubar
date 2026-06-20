@@ -227,10 +227,10 @@ IOREG_IDLE='    "AppleRawCurrentCapacity" = 8000
     "AppleRawMaxCapacity" = 8682'
 got="$(PMSET_FIXTURE="$NOEST_AMP" IOREG_FIXTURE="$IOREG_IDLE" "$SCRIPT" | head -1)"
 [ "$got" = "50% 8h" ] && printf 'ok   - nominal estimate (draw=0) -> 8h\n' || { printf 'FAIL - nominal estimate: expected [50%% 8h] got [%s]\n' "$got"; fail=1; }
-# macOS's own high (idle) estimate is also capped at the nominal: pmset 20:00 -> 9h
+# macOS's own estimate is NOT capped (only our stop-gap is): pmset 20:00 -> 20h
 PMSET_HIGH="Now drawing from 'Battery Power'
  -InternalBattery-0 (id=1)	50%; discharging; 20:00 remaining present: true"
 got="$(PMSET_FIXTURE="$PMSET_HIGH" IOREG_FIXTURE="$IOREG_IDLE_LOW" "$SCRIPT" | head -1)"
-[ "$got" = "50% 9h" ] && printf 'ok   - macOS 20:00 estimate capped to nominal -> 9h\n' || { printf 'FAIL - macOS cap: expected [50%% 9h] got [%s]\n' "$got"; fail=1; }
+[ "$got" = "50% 20h" ] && printf 'ok   - macOS 20:00 estimate shown as-is -> 20h\n' || { printf 'FAIL - macOS uncapped: expected [50%% 20h] got [%s]\n' "$got"; fail=1; }
 
 exit $fail
