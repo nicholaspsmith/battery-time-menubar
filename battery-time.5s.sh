@@ -158,10 +158,10 @@ fi
 if [ "$plugged" = 1 ]; then pm_src="-c"; else pm_src="-b"; fi
 
 mode_item() {  # <powermode value> <label>
-  local val="$1" label="$2" chk=""
-  [ "$cur_pm" = "$val" ] && chk=" checked=true"
-  printf '%s | shell=/usr/bin/sudo param1=/usr/bin/pmset param2=%s param3=powermode param4=%s terminal=false refresh=true%s\n' \
-    "$label" "$pm_src" "$val" "$chk"
+  local val="$1" label="$2" sym="circle"
+  [ "$cur_pm" = "$val" ] && sym="circle.inset.filled"
+  printf '%s | sfimage=%s shell=/usr/bin/sudo param1=/usr/bin/pmset param2=%s param3=powermode param4=%s terminal=false refresh=true\n' \
+    "$label" "$sym" "$pm_src" "$val"
 }
 
 echo "---"

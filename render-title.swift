@@ -70,6 +70,14 @@ func knockout(_ block: () -> Void, clip: NSRect? = nil) {
   NSGraphicsContext.current?.restoreGraphicsState()
 }
 
+// Recolor whatever was already drawn within rect to `c` (e.g. tint a glyph to ink).
+func tint(_ rect: NSRect, _ c: NSColor) {
+  NSGraphicsContext.current?.saveGraphicsState()
+  NSGraphicsContext.current?.compositingOperation = .sourceAtop
+  c.set(); NSBezierPath(rect: rect).fill()
+  NSGraphicsContext.current?.restoreGraphicsState()
+}
+
 func drawBattery(_ pct: Int, originX: CGFloat) {
   let by = (height - bodyH) / 2
   let bodyRect = NSRect(x: originX + lineW/2, y: by + lineW/2, width: bodyW - lineW, height: bodyH - lineW)
@@ -83,10 +91,16 @@ func drawBattery(_ pct: Int, originX: CGFloat) {
                         width: max(0, innerW * CGFloat(pct)/100.0), height: bodyRect.height - 2*fillInset)
   fill.setFill(); NSBezierPath(roundedRect: fillRect, xRadius: 1, yRadius: 1).fill()
   if charging {
-    let cfg = NSImage.SymbolConfiguration(pointSize: bodyH - 1.0, weight: .bold)
+    let cfg = NSImage.SymbolConfiguration(pointSize: bodyH - 1.5, weight: .bold)
     if let b = NSImage(systemSymbolName: "bolt.fill", accessibilityDescription: nil)?.withSymbolConfiguration(cfg) {
-      let r = NSRect(x: originX + bodyW/2 - b.size.width/2, y: (height - b.size.height)/2, width: b.size.width, height: b.size.height)
-      knockout({ b.draw(in: r) })
+      let bw = b.size.width, bh = b.size.height
+      let cx = originX + bodyW/2, cy = height/2
+      let halo: CGFloat = 1.4
+      // 1) knock out a slightly larger bolt -> a thin transparent outline gap
+      knockout({ b.draw(in: NSRect(x: cx-(bw+halo)/2, y: cy-(bh+halo)/2, width: bw+halo, height: bh+halo)) })
+      // 2) the bolt itself, tinted to the label color, sitting inside that gap
+      let r = NSRect(x: cx-bw/2, y: cy-bh/2, width: bw, height: bh)
+      b.draw(in: r); tint(r, ink)
     }
   }
   if pctInside {

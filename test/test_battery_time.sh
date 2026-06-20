@@ -69,13 +69,12 @@ has "dropdown: charged detail"        "$CHARGED"     "Fully charged"
 has "dropdown: battery settings link" "$DISCHARGING" "com.apple.Battery-Settings.extension"
 
 # energy-mode selector (POWERMODE_FIXTURE pins powermode: 0=auto,1=low,2=high)
-has_pm "mode option: Automatic (battery)" "$DISCHARGING" 0 "Automatic | shell=/usr/bin/sudo param1=/usr/bin/pmset param2=-b param3=powermode param4=0"
-has_pm "mode option: Low Power (battery)"  "$DISCHARGING" 0 "Low Power | shell=/usr/bin/sudo param1=/usr/bin/pmset param2=-b param3=powermode param4=1"
-has_pm "mode option: High Power (battery)" "$DISCHARGING" 0 "High Power | shell=/usr/bin/sudo param1=/usr/bin/pmset param2=-b param3=powermode param4=2"
-has_pm "Automatic checked when auto"       "$DISCHARGING" 0 "param4=0 terminal=false refresh=true checked=true"
-has_pm "Low Power checked when low"        "$DISCHARGING" 1 "param4=1 terminal=false refresh=true checked=true"
-has_pm "High Power checked when high"      "$CHARGING"    2 "param4=2 terminal=false refresh=true checked=true"
-has_pm "modes use -c source on AC"         "$CHARGING"    0 "Low Power | shell=/usr/bin/sudo param1=/usr/bin/pmset param2=-c param3=powermode param4=1"
+has_pm "mode: Automatic active"    "$DISCHARGING" 0 "Automatic | sfimage=circle.inset.filled shell=/usr/bin/sudo param1=/usr/bin/pmset param2=-b param3=powermode param4=0"
+has_pm "mode: Low Power inactive"  "$DISCHARGING" 0 "Low Power | sfimage=circle shell=/usr/bin/sudo param1=/usr/bin/pmset param2=-b param3=powermode param4=1"
+has_pm "mode: High Power inactive" "$DISCHARGING" 0 "High Power | sfimage=circle shell=/usr/bin/sudo param1=/usr/bin/pmset param2=-b param3=powermode param4=2"
+has_pm "mode: Low Power active"    "$DISCHARGING" 1 "Low Power | sfimage=circle.inset.filled shell=/usr/bin/sudo param1=/usr/bin/pmset param2=-b param3=powermode param4=1"
+has_pm "mode: High Power active AC" "$CHARGING"   2 "High Power | sfimage=circle.inset.filled shell=/usr/bin/sudo param1=/usr/bin/pmset param2=-c param3=powermode param4=2"
+has_pm "modes use -c on AC"        "$CHARGING"    0 "Low Power | sfimage=circle shell=/usr/bin/sudo param1=/usr/bin/pmset param2=-c param3=powermode param4=1"
 
 # the mode selector must be the FIRST dropdown section (before the Battery line)
 out="$(PMSET_FIXTURE="$DISCHARGING" POWERMODE_FIXTURE=0 "$SCRIPT")"
