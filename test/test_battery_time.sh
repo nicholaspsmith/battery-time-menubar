@@ -213,4 +213,14 @@ got="$(PMSET_FIXTURE="$NOEST_AMP" IOREG_FIXTURE="$IOREG_EST" "$SCRIPT" | head -1
 if [ "$got" = "50% 2:00" ]; then printf 'ok   - gap estimate (5000mAh / 2500mA -> 2:00)\n'
 else printf 'FAIL - gap estimate: expected [50%% 2:00] got [%s]\n' "$got"; fail=1; fi
 
+# nominal fallback when there's no measurable draw yet (InstantAmperage 0): ~12 W.
+IOREG_IDLE='    "AppleRawCurrentCapacity" = 8000
+    "InstantAmperage" = 0
+    "Voltage" = 12000
+    "DesignCapacity" = 8579
+    "AppleRawMaxCapacity" = 8682'
+got="$(PMSET_FIXTURE="$NOEST_AMP" IOREG_FIXTURE="$IOREG_IDLE" "$SCRIPT" | head -1)"
+if [ "$got" = "50% 8:00" ]; then printf 'ok   - nominal estimate when draw=0 (8000mAh @ ~12W/12V -> 8:00)\n'
+else printf 'FAIL - nominal estimate: expected [50%% 8:00] got [%s]\n' "$got"; fail=1; fi
+
 exit $fail

@@ -15,8 +15,10 @@ spaces like the native icons.
   estimate (e.g. fully charged).
 - Independent **icon / percentage / time** toggles ("Menu bar shows…" in the dropdown).
 - Right after unplug macOS takes ~30–60s to compute its time estimate; until then
-  the plugin shows its **own** estimate (remaining mAh ÷ discharge mA from `ioreg`)
-  so a time appears immediately instead of `--:--`.
+  the plugin shows its **own** — from the measured discharge current, or a nominal
+  ~12 W assumption when the laptop is idle (0 mA draw) — so a time appears
+  immediately instead of `--:--`. Rough/jumpy at first; the measured, then macOS,
+  estimate takes over as real draw appears.
 - Falls back to ":bolt.fill: time" text if `render-title` isn't compiled. Always
   renders something, so it keeps its position in menu-bar managers like Ice.
 

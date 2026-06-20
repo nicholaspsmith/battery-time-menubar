@@ -91,10 +91,15 @@ rawcur="$(ival AppleRawCurrentCapacity)"; volt_mv="$(ival Voltage)"; amp="$(ival
 aname="$(printf '%s\n' "$ioreg_out" | sed -n 's/.*"AdapterDetails".*"Name"="\([^"]*\)".*/\1/p' | head -n1)"
 awatts="$(printf '%s\n' "$ioreg_out" | sed -n 's/.*"AdapterDetails".*"Watts"=\([0-9][0-9]*\).*/\1/p' | head -n1)"
 
-# macOS doesn't compute a time estimate for ~30-60s after unplug; fill that gap
-# with our own (remaining mAh / discharge mA) so a time shows immediately.
-if [ "$plugged" != 1 ] && [ -z "$time" ] && [ -n "$rawcur" ] && [ -n "$amp" ] && [ "${#amp}" -ge 11 ]; then
-  dmag="$(echo "18446744073709551616 - $amp" | bc 2>/dev/null)"
+# macOS reports "(no estimate)" for ~30-60s after unplug. Show our own right away:
+# from the measured discharge current, or -- when that reads 0 (idle just after
+# unplug) -- from a nominal ~12 W draw. Rough, but better than --:-- immediately.
+if [ "$plugged" != 1 ] && [ -z "$time" ] && [ -n "$rawcur" ]; then
+  dmag=""
+  [ -n "$amp" ] && [ "${#amp}" -ge 11 ] && dmag="$(echo "18446744073709551616 - $amp" | bc 2>/dev/null)"
+  if ! { [ -n "$dmag" ] && [ "$dmag" -gt 0 ] 2>/dev/null; }; then
+    [ -n "$volt_mv" ] && [ "$volt_mv" -gt 0 ] 2>/dev/null && dmag=$(( 12000000 / volt_mv ))  # ~12 W
+  fi
   if [ -n "$dmag" ] && [ "$dmag" -gt 0 ] 2>/dev/null; then
     emins=$(( rawcur * 60 / dmag ))
     time="$(( emins / 60 )):$(printf '%02d' "$(( emins % 60 ))")"
