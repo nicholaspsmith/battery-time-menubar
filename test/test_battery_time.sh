@@ -54,10 +54,10 @@ CHARGED="Now drawing from 'AC Power'
 ACHOLD="Now drawing from 'AC Power'
  -InternalBattery-0 (id=50921571)	80%; AC attached; not charging present: true"
 
-# Title fallback under BT_TITLE_TEXT: battery glyph -> "pct% time"; charging -> bolt.
+# Title fallback under BT_TITLE_TEXT: "pct% [bolt] time" (% stands in for the glyph).
 check "on battery: glyph + ETA"       "$DISCHARGING" "22% 1:46"
 check "on battery, no estimate"       "$NOEST"       "50% --:--"
-check "charging: bolt + time-to-full" "$CHARGING"    ":bolt.fill: 1:20 | sfsize=9"
+check "charging: glyph + bolt + time" "$CHARGING"    "80% :bolt.fill: 1:20 | sfsize=9"
 check "charged: glyph (pct)"          "$CHARGED"     "100%"
 check "ac hold: glyph (pct)"          "$ACHOLD"      "80%"
 

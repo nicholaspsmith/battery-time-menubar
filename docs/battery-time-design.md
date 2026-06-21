@@ -25,18 +25,29 @@ A SwiftBar plugin plus a launchd watcher, in a dedicated repo at
 
 ## Menu-bar title
 
-| Power state | Title |
-| --- | --- |
-| On battery / charging | bolt + ETA (to-empty / to-full) |
-| No estimate (e.g. charged) | bolt only |
+A native-style battery glyph: rounded body + nub, a **fill proportional to charge**,
+the **`%` to its LEFT** and the **time to its RIGHT**. A *bisecting overlay* marks
+state:
 
-- The title is one tight monochrome image from `render-title.swift`: a `bolt.fill`
-  + the time text, emitted as `templateImage=` so it auto-adapts to light/dark and
-  spaces like the native icons (SwiftBar pads *text* items wider than images, issue
-  #228). Independent **icon / % / time** toggles via `set-display.sh`. Falls back to
-  ":bolt.fill: time" text when the helper isn't compiled or in tests
-  (`BT_TITLE_TEXT=1`). `render-title.swift` retains a colored battery-glyph mode
-  (`--battery`/`--fill`/`--ink`) that the plugin no longer uses.
+| State | Glyph |
+| --- | --- |
+| On battery | battery glyph (+ ETA), red fill ≤20% |
+| Charging | battery glyph bisected by a **bolt** (+ time-to-full) |
+| Low Power mode | battery glyph with a **yellow** fill |
+| High Power mode | battery glyph bisected by a **💪 emoji** |
+
+- The title is one tight image from `render-title.swift` (`--battery <pct>` with
+  `--lead "<pct>%"`, `--text "<time>"`, and `--charging` / `--flex` for the
+  overlay). A plain glyph emits as `templateImage=` so it auto-adapts to light/dark
+  and spaces like the native icons (SwiftBar pads *text* items wider than images,
+  issue #228). A colored fill (`--fill yellow|red`) or the 💪 overlay can't be a
+  template, so it emits a colored `image=` and the plugin picks `--ink black|white`
+  from the current appearance. Independent **icon / % / time** toggles via
+  `set-display.sh`. Falls back to "`pct% [:bolt.fill:] time`" text when the helper
+  isn't compiled or in tests (`BT_TITLE_TEXT=1`).
+- Overlays are mutually exclusive: a charging **bolt** takes precedence over the
+  High Power **💪** (charging is the more urgent status); fill color is yellow in
+  Low Power, red on battery ≤20%.
 - A meaningful ETA exists only while `discharging` or `charging`; `charged`
   reports a bogus `0:00 remaining`, so the ETA is gated on state.
 - macOS reports `(no estimate)` for ~30–60s after unplug. To avoid showing `--:--`
@@ -114,7 +125,5 @@ detail line, and the settings link.
 
 ## Out of scope (YAGNI)
 
-- Battery-level glyphs / percentage in the menu-bar title (dropped in favor of a
-  bolt-or-ETA title; the percentage lives in the dropdown)
 - A dedicated app or custom Swift menu-bar binary
 - Global menu-bar spacing changes (would affect all items)

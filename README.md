@@ -7,19 +7,22 @@ a details dropdown.
 
 ## What it shows
 
-**Menu bar** — a **bolt** icon + the time remaining, drawn as one tight monochrome
-image by the compiled `render-title` helper (auto-adapts to light/dark), so it
-spaces like the native icons.
+**Menu bar** — a native-style **battery glyph** (fill proportional to charge) with
+the **percentage to its left** and the **time remaining to its right**, drawn as
+one tight image by the compiled `render-title` helper (auto-adapts to light/dark),
+so it spaces like the native icons. A *bisecting overlay* marks state:
 
-- Time is to-empty on battery, to-full while charging; bolt alone when there's no
-  estimate (e.g. fully charged).
+- **Charging** — the glyph is bisected by a **bolt** (and shows time-to-full).
+- **Low Power mode** — the glyph fill turns **yellow** (like the native icon).
+- **High Power mode** — the glyph is bisected by a **💪 emoji**.
+- On battery the fill turns **red** at ≤20%; time is to-empty.
 - Independent **icon / percentage / time** toggles ("Menu bar shows…" in the dropdown).
 - Right after unplug macOS takes ~30–60s to compute its estimate; until then the
   plugin shows its own (measured discharge, or a nominal ~12 W when idle) so a
   time appears immediately instead of `--:--`. **Our stop-gap** is capped at the
   nominal (so a near-zero idle draw can't project an unrealistic 20h+); once
   macOS has its own estimate it's shown as-is. Whole hours render compactly as `8h`.
-- Falls back to ":bolt.fill: time" text if `render-title` isn't compiled. Always
+- Falls back to "`pct% [bolt] time`" text if `render-title` isn't compiled. Always
   renders something, so it keeps its position in menu-bar managers like Ice.
 
 **Dropdown** (click the item; SwiftBar's own default items are hidden — Option-click reveals them):
@@ -109,7 +112,7 @@ sudo rm -f /etc/sudoers.d/battery-time-powermode
 - `com.nicholassmith.battery-time-power-watch.plist` — launchd agent template
 - `install.sh` — installer (plugin symlink + launchd agent)
 - `install-powermode-sudoers.sh` — one-time passwordless-sudo rule for the toggle
-- `render-title.swift` — compiles to `bin/render-title`; draws the bolt + text (battery-glyph mode also available)
+- `render-title.swift` — compiles to `bin/render-title`; draws the battery glyph (+ % / time, bolt or 💪 overlay)
 - `set-tempunit.sh` — persists the dropdown °C/°F temperature unit
 - `set-display.sh` — toggles the menu-bar icon / percentage / time prefs
 - `show-tips.sh` — opens the current battery-longevity tips in a dialog
