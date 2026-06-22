@@ -26,6 +26,7 @@ private struct Snapshot {
 
 final class App: NSObject, NSApplicationDelegate {
     private var controller: StatusItemController!
+    private var watcher: PowerSourceWatcher!
     private var latest: Snapshot?
 
     // 24h cache: recomputed off the poll thread, at most every 10 min.
@@ -41,6 +42,11 @@ final class App: NSObject, NSApplicationDelegate {
             onBuildMenu: { [weak self] menu in self?.buildMenu(menu) }
         )
         controller.start()
+
+        // Instant plug/unplug refresh via IOKit power-source notifications,
+        // replacing the plugin's power-watch launchd agent.
+        watcher = PowerSourceWatcher(onChange: { [weak self] in self?.refreshNow() })
+        watcher.start()
     }
 
     // MARK: Poll
