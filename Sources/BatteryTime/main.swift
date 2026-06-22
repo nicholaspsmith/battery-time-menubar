@@ -131,9 +131,12 @@ final class App: NSObject, NSApplicationDelegate {
         let glyph = showIcon && pct != nil
 
         if glyph {
-            // a coloured fill needs a non-template image -> pick ink for the
-            // current appearance; a template (fill .none) auto-adapts.
-            let ink: NSColor = fill == .none ? .black : appearanceInk()
+            // ink = labelColor, a DYNAMIC color AppKit resolves at draw time under
+            // the menu bar's appearance (black in light, white in dark) — so the
+            // coloured (non-template) glyph adapts like a template would, including
+            // the fullscreen-reveal dark bar. Do NOT sample effectiveAppearance to
+            // bake a fixed black/white: it oscillates during the reveal.
+            let ink: NSColor = .labelColor
             let image = BatteryGlyph.image(
                 pct: pct!,
                 charging: isCharging,
@@ -151,11 +154,6 @@ final class App: NSObject, NSApplicationDelegate {
             let text = parts.isEmpty ? "--:--" : parts.joined(separator: " ")
             controller.setTitle(text, warn: false)
         }
-    }
-
-    private func appearanceInk() -> NSColor {
-        let isDark = NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-        return isDark ? .white : .black
     }
 
     // MARK: Build the dropdown
