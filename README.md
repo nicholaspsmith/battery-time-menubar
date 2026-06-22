@@ -10,11 +10,11 @@ a details dropdown.
 **Menu bar** — a native-style **battery glyph** (fill proportional to charge) with
 the **percentage to its left** and the **time remaining to its right**, drawn as
 one tight image by the compiled `render-title` helper (auto-adapts to light/dark),
-so it spaces like the native icons. A *bisecting overlay* marks state:
+so it spaces like the native icons. State is shown by the fill colour and a bolt:
 
-- **Charging** — the glyph is bisected by a **bolt** (and shows time-to-full).
+- **Charging** — the glyph is bisected by a **bolt** cutout (and shows time-to-full).
+- **High Power mode** — the glyph fill turns **blue** (including while charging).
 - **Low Power mode** — the glyph fill turns **yellow** (like the native icon).
-- **High Power mode** — the glyph is bisected by a **💪 emoji**.
 - On battery the fill turns **red** at ≤20%; time is to-empty.
 - Independent **icon / percentage / time** toggles ("Menu bar shows…" in the dropdown).
 - Right after unplug macOS takes ~30–60s to compute its estimate; until then the
@@ -112,7 +112,7 @@ sudo rm -f /etc/sudoers.d/battery-time-powermode
 - `com.nicholassmith.battery-time-power-watch.plist` — launchd agent template
 - `install.sh` — installer (plugin symlink + launchd agent)
 - `install-powermode-sudoers.sh` — one-time passwordless-sudo rule for the toggle
-- `render-title.swift` — compiles to `bin/render-title`; draws the battery glyph (+ % / time, bolt or 💪 overlay)
+- `render-title.swift` — compiles to `bin/render-title`; draws the battery glyph (+ % / time, charging bolt, coloured fill)
 - `set-tempunit.sh` — persists the dropdown °C/°F temperature unit
 - `set-display.sh` — toggles the menu-bar icon / percentage / time prefs
 - `show-tips.sh` — opens the current battery-longevity tips in a dialog

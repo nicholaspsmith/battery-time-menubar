@@ -3,8 +3,8 @@
 # SwiftBar plugin: battery ETA (H:MM) in the menu bar, refreshed in place every 5s
 # (plus instant updates from the power-watch.sh launchd agent on plug/unplug).
 #   Menu bar:  native-style battery glyph (% to its left, time to its right);
-#              bisected by a bolt while charging, by 💪 in High Power; yellow in
-#              Low Power, red when low. Dropdown: stats + Battery Settings link.
+#              bisected by a bolt while charging; fill is blue in High Power,
+#              yellow in Low Power, red when low. Dropdown: stats + settings link.
 # In-place refresh keeps its position in menu-bar managers like Ice.
 #
 # <bitbar.title>Battery Time Remaining</bitbar.title>
@@ -131,9 +131,10 @@ fi
 
 # --- menu bar title ---
 # Native-style battery glyph (fill ∝ charge), the % to its LEFT and the time to
-# its RIGHT. A bisecting overlay marks state: a bolt while charging, the 💪 emoji
-# in High Power mode. Fill is yellow in Low Power, red when low on battery.
-# One tight image via render-title; falls back to text. icon/%/time are toggles.
+# its RIGHT. A bolt cutout bisects the glyph while charging. Fill colour marks the
+# mode: blue in High Power (incl. while charging), yellow in Low Power; red when
+# low on battery. One tight image via render-title; falls back to text. icon/%/time
+# are toggles.
 pct_num="${pct%\%}"
 cur_pm="${POWERMODE_FIXTURE:-$(pmset -g | awk '/^[[:space:]]*powermode[[:space:]]/{print $2; exit}')}"
 if [ "$status" = "Charging" ]; then is_charging=1; else is_charging=0; fi
@@ -141,14 +142,14 @@ if [ "$plugged" = 1 ]; then mb_time="$time"; else mb_time="${time:-"--:--"}"; fi
 # whole hours show compactly: 20:00 -> 20h
 case "$mb_time" in *:00) mb_time="${mb_time%:00}h" ;; esac
 
-# bisecting overlay (mutually exclusive): bolt while charging, else 💪 in High Power
+# a bolt cutout bisects the glyph while charging
 overlay="none"
-if [ "$is_charging" = 1 ]; then overlay="bolt"
-elif [ "$cur_pm" = "2" ]; then overlay="flex"
-fi
-# fill color: yellow in Low Power, red when low on battery (and not charging)
+[ "$is_charging" = 1 ] && overlay="bolt"
+# fill color marks the mode: blue in High Power, yellow in Low Power (both even
+# while charging); red when low on battery. Mode colour wins over the low warning.
 icon_color="none"
-if [ "$cur_pm" = "1" ]; then icon_color="yellow"
+if [ "$cur_pm" = "2" ]; then icon_color="blue"
+elif [ "$cur_pm" = "1" ]; then icon_color="yellow"
 elif [ "$is_charging" != 1 ] && [ "$plugged" != 1 ] && [ -n "$pct_num" ] && [ "$pct_num" -le 20 ]; then icon_color="red"
 fi
 
@@ -183,14 +184,13 @@ if [ -x "$HELPER" ] && [ -z "${BT_TITLE_TEXT:-}" ]; then
   if [ "$glyph" = 1 ]; then
     targs+=(--battery "$pct_num")
     [ "$overlay" = bolt ] && targs+=(--charging)
-    [ "$overlay" = flex ] && targs+=(--flex)
     [ -n "$lead_txt" ] && targs+=(--lead "$lead_txt")
     [ -n "$time_txt" ] && targs+=(--text "$time_txt")
-    # a colored fill (yellow/red) or the 💪 overlay needs a non-template PNG, so
-    # pick ink to match the current appearance.
-    if [ "$icon_color" != none ] || [ "$overlay" = flex ]; then
+    # a colored fill (yellow/blue/red) needs a non-template PNG, so pick ink to
+    # match the current appearance.
+    if [ "$icon_color" != none ]; then
       if [ "$(defaults read -g AppleInterfaceStyle 2>/dev/null)" = "Dark" ]; then ink=white; else ink=black; fi
-      targs+=(--ink "$ink"); [ "$icon_color" != none ] && targs+=(--fill "$icon_color"); colored=1
+      targs+=(--ink "$ink" --fill "$icon_color"); colored=1
     fi
   elif [ "$show_icon" = 1 ] && [ "$is_charging" = 1 ]; then
     targs+=(--bolt); [ -n "$time_txt" ] && targs+=(--text "$time_txt")

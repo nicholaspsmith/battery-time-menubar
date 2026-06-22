@@ -3,22 +3,23 @@
 // left-to-right: optional lead text (e.g. "82%"), an optional battery glyph
 // (or a standalone bolt), then optional trailing text (e.g. the time).
 //
-//   render-title --battery <0-100> [--charging|--flex] [--lead "82%"] [--text "1:20"]
-//                [--ink black|white] [--fill none|yellow|red]
+//   render-title --battery <0-100> [--charging] [--lead "82%"] [--text "1:20"]
+//                [--ink black|white] [--fill none|yellow|blue|red]
 //   render-title [--bolt] [--text "1:20"]        # iconless / standalone-bolt fallback
 //
 // The battery glyph mirrors the native menu-bar icon: rounded body + nub, a fill
-// proportional to charge, the % shown to its LEFT (not inside). A bisecting
-// overlay marks state: a bolt while charging, the 💪 emoji in High Power mode.
+// proportional to charge, the % shown to its LEFT (not inside). A bolt cutout
+// bisects the glyph while charging; the fill colour marks the energy mode
+// (yellow = Low Power, blue = High Power) or a low battery (red).
 //
-// fill=none AND no emoji overlay emits a template image (alpha only, adapts to
-// light/dark). A colored fill (yellow/red) or the 💪 overlay emits a normal
-// colored PNG, so the caller picks ink to suit the current appearance.
+// fill=none emits a template image (alpha only, adapts to light/dark). A coloured
+// fill (yellow/blue/red) emits a normal coloured PNG, so the caller picks ink to
+// suit the current appearance.
 
 import AppKit
 
 let argv = CommandLine.arguments
-var leadText = "", text = "", withBolt = false, charging = false, flex = false
+var leadText = "", text = "", withBolt = false, charging = false
 var inkName = "black", fillName = "none"
 var batteryPct: Int? = nil
 var i = 1
@@ -26,7 +27,6 @@ while i < argv.count {
   switch argv[i] {
   case "--bolt": withBolt = true
   case "--charging": charging = true
-  case "--flex": flex = true
   case "--battery": i += 1; if i < argv.count { batteryPct = max(0, min(100, Int(argv[i]) ?? 0)) }
   case "--lead": i += 1; if i < argv.count { leadText = argv[i] }
   case "--text": i += 1; if i < argv.count { text = argv[i] }
@@ -40,7 +40,9 @@ while i < argv.count {
 // ink = outline / text / % / bolt color (the label color); fill = battery-fill color
 // (defaults to ink, so a plain mono icon emits as a template that auto-adapts).
 let ink: NSColor = inkName == "white" ? .white : .black
-let fill: NSColor = fillName == "yellow" ? .systemYellow : (fillName == "red" ? .systemRed : ink)
+let fill: NSColor = fillName == "yellow" ? .systemYellow
+  : fillName == "blue" ? .systemBlue
+  : fillName == "red" ? .systemRed : ink
 
 let scale: CGFloat = 2
 // the % / time text run 2pt smaller than the default menu-bar font
@@ -85,14 +87,6 @@ func knockout(_ block: () -> Void, clip: NSRect? = nil) {
   NSGraphicsContext.current?.restoreGraphicsState()
 }
 
-// Recolor whatever was already drawn within rect to `c` (e.g. tint a glyph to ink).
-func tint(_ rect: NSRect, _ c: NSColor) {
-  NSGraphicsContext.current?.saveGraphicsState()
-  NSGraphicsContext.current?.compositingOperation = .sourceAtop
-  c.set(); NSBezierPath(rect: rect).fill()
-  NSGraphicsContext.current?.restoreGraphicsState()
-}
-
 // A lightning bolt as a bezier path, centered/scaled into `rect`. Normalized
 // vertices (y-up) of a ⚡ shape, mapped so its bounding box fills the rect — so
 // we control the exact size/centering (SF Symbol padding does not cooperate).
@@ -134,15 +128,6 @@ func drawBattery(_ pct: Int, originX: CGFloat) {
     let path = boltPath(in: r)
     knockout({ path.fill() })
     path.lineWidth = 1.0; ink.setStroke(); path.stroke()
-  } else if flex {
-    // High Power mode: a 💪 emoji bisecting the glyph (colored; same halo trick).
-    let ef = NSFont.systemFont(ofSize: bodyH - 2)
-    let es = NSAttributedString(string: "💪", attributes: [.font: ef])
-    let sz = es.size()
-    let r = NSRect(x: cx - sz.width/2, y: cy - sz.height/2, width: sz.width, height: sz.height)
-    let halo: CGFloat = 1.6
-    knockout({ es.draw(in: NSRect(x: r.minX-halo/2, y: r.minY-halo/2, width: r.width+halo, height: r.height+halo)) })
-    es.draw(in: r)
   }
 }
 

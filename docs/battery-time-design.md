@@ -34,20 +34,21 @@ state:
 | On battery | battery glyph (+ ETA), red fill ≤20% |
 | Charging | battery glyph bisected by a **bolt** (+ time-to-full) |
 | Low Power mode | battery glyph with a **yellow** fill |
-| High Power mode | battery glyph bisected by a **💪 emoji** |
+| High Power mode | battery glyph with a **blue** fill (incl. while charging) |
 
 - The title is one tight image from `render-title.swift` (`--battery <pct>` with
-  `--lead "<pct>%"`, `--text "<time>"`, and `--charging` / `--flex` for the
-  overlay). A plain glyph emits as `templateImage=` so it auto-adapts to light/dark
-  and spaces like the native icons (SwiftBar pads *text* items wider than images,
-  issue #228). A colored fill (`--fill yellow|red`) or the 💪 overlay can't be a
-  template, so it emits a colored `image=` and the plugin picks `--ink black|white`
-  from the current appearance. Independent **icon / % / time** toggles via
-  `set-display.sh`. Falls back to "`pct% [:bolt.fill:] time`" text when the helper
-  isn't compiled or in tests (`BT_TITLE_TEXT=1`).
-- Overlays are mutually exclusive: a charging **bolt** takes precedence over the
-  High Power **💪** (charging is the more urgent status); fill color is yellow in
-  Low Power, red on battery ≤20%.
+  `--lead "<pct>%"`, `--text "<time>"`, and `--charging` for the bolt). A plain
+  glyph emits as `templateImage=` so it auto-adapts to light/dark and spaces like
+  the native icons (SwiftBar pads *text* items wider than images, issue #228). A
+  colored fill (`--fill yellow|blue|red`) can't be a template, so it emits a
+  colored `image=` and the plugin picks `--ink black|white` from the current
+  appearance. Independent **icon / % / time** toggles via `set-display.sh`. Falls
+  back to "`pct% [:bolt.fill:] time`" text when the helper isn't compiled or in
+  tests (`BT_TITLE_TEXT=1`).
+- Fill colour marks the state: **blue** in High Power (including while charging),
+  **yellow** in Low Power, **red** on battery ≤20% — the mode colour wins over the
+  low-battery red. The charging **bolt** cutout is drawn on top of whatever fill
+  colour is active.
 - A meaningful ETA exists only while `discharging` or `charging`; `charged`
   reports a bogus `0:00 remaining`, so the ETA is gated on state.
 - macOS reports `(no estimate)` for ~30–60s after unplug. To avoid showing `--:--`
