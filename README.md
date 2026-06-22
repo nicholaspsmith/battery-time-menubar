@@ -62,6 +62,25 @@ so it spaces like the native icons. State is shown by the fill colour and a bolt
   plugin, whose frame resets re-add the item and bounce it to Ice's hidden
   section).
 
+## Standalone Swift app
+
+The repo now also ships a standalone Swift menu-bar app (`BatteryTime`,
+"Battery Time.app"), built on
+[StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit) — no SwiftBar
+host required. All the `pmset` / `ioreg` / log parsing lives in a pure,
+unit-tested `BatteryTimeCore` library; the battery glyph is folded in from
+`render-title.swift`.
+
+```sh
+./scripts/build-app.sh          # produces build/Battery Time.app
+open "build/Battery Time.app"
+```
+
+It replaces the `power-watch` launchd agent with **in-process IOKit power-source
+notifications** (instant plug/unplug updates) and reuses the existing
+passwordless-sudo rule for the energy-mode toggle. The SwiftBar plugin remains
+available and untouched.
+
 ## Requirements
 
 - macOS laptop
