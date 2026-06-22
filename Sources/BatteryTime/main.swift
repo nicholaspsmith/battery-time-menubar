@@ -131,12 +131,16 @@ final class App: NSObject, NSApplicationDelegate {
         let glyph = showIcon && pct != nil
 
         if glyph {
-            // ink = labelColor, a DYNAMIC color AppKit resolves at draw time under
-            // the menu bar's appearance (black in light, white in dark) — so the
-            // coloured (non-template) glyph adapts like a template would, including
-            // the fullscreen-reveal dark bar. Do NOT sample effectiveAppearance to
-            // bake a fixed black/white: it oscillates during the reveal.
-            let ink: NSColor = .labelColor
+            // Opaque, appearance-resolving ink: a dynamic NSColor whose provider runs
+            // at DRAW time under the menu bar's real appearance (white in dark, black
+            // in light). That makes the glyph adapt like a template — including the
+            // fullscreen-reveal dark bar — WITHOUT sampling effectiveAppearance (which
+            // oscillates during the reveal). It must be fully opaque: labelColor is
+            // only ~85% alpha, which renders the template glyph translucent/grey
+            // instead of the solid menu-bar colour the other icons use.
+            let ink = NSColor(name: nil) { appearance in
+                appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? .white : .black
+            }
             let image = BatteryGlyph.image(
                 pct: pct!,
                 charging: isCharging,
