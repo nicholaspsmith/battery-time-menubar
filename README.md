@@ -12,6 +12,16 @@ the **percentage to its left** and the **time remaining to its right**, drawn as
 one tight image by the compiled `render-title` helper (auto-adapts to light/dark),
 so it spaces like the native icons. State is shown by the fill colour and a bolt:
 
+| State | Menu bar |
+|-------|----------|
+| On battery | ![on battery](screenshots/menubar-discharging.png) |
+| Low (≤20%) | ![low](screenshots/menubar-low.png) |
+| Charging | ![charging](screenshots/menubar-charging.png) |
+| High Power mode | ![high power](screenshots/menubar-high-power.png) |
+| Low Power mode | ![low power](screenshots/menubar-low-power.png) |
+
+(Examples rendered by the same `render-title` helper the menu bar uses.)
+
 - **Charging** — the glyph is bisected by a **bolt** cutout (and shows time-to-full).
 - **High Power mode** — the glyph fill turns **blue** (including while charging).
 - **Low Power mode** — the glyph fill turns **yellow** (like the native icon).
