@@ -81,6 +81,17 @@ notifications** (instant plug/unplug updates) and reuses the existing
 passwordless-sudo rule for the energy-mode toggle. The SwiftBar plugin remains
 available and untouched.
 
+### Start at Login
+
+Two ways to launch it automatically (use **one**, not both, or it may start twice):
+
+- **In-app toggle** — the menu's **Start at Login** item registers the app via
+  `SMAppService` (bundle-ID based, not a LaunchAgent). macOS requires the app to
+  live in `/Applications` or `~/Applications`, so point a symlink there first
+  (e.g. `~/Applications/Battery Time.app` → `build/Battery Time.app`), then toggle it.
+- **macOS Login Items** — add the app under System Settings → General → Login Items
+  ("Open at Login"). Same effect, and it doesn't require the in-app toggle.
+
 ## Requirements
 
 - macOS laptop
