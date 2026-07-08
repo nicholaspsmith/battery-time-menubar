@@ -35,6 +35,15 @@ final class App: NSObject, NSApplicationDelegate {
     private let usageQueue = DispatchQueue(label: "com.nicholaspsmith.BatteryTime.usage")
     private var usageComputing = false
 
+    // Poll runs its blocking pmset/ioreg calls off the main thread. These two
+    // flags are main-thread only: a refresh requested while one is in flight
+    // (e.g. a plug/unplug from the watcher, or a menu action) is coalesced into
+    // a single follow-up run rather than dropped, so event-driven refreshes stay
+    // responsive without stacking.
+    private let pollQueue = DispatchQueue(label: "com.nicholaspsmith.BatteryTime.poll")
+    private var pollInFlight = false
+    private var pollPending = false
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         controller = StatusItemController(
             pollInterval: 5,
@@ -53,58 +62,70 @@ final class App: NSObject, NSApplicationDelegate {
 
     func refreshNow() { poll() }
 
+    // Called on the main thread (timer, power-source watcher, or a menu action).
+    // The blocking pmset/ioreg calls run on a background queue so a slow tool can
+    // never freeze the run loop and stop the menu opening on click; the snapshot
+    // is committed + rendered back on main (latest/render/maybeRecomputeUsage are
+    // all main-thread state). A refresh requested mid-flight is coalesced.
     private func poll() {
-        let battRaw = Shell.run(kPmset, ["-g", "batt"]) ?? ""
-        let ioregRaw = Shell.run(kIoreg, ["-rn", "AppleSmartBattery"]) ?? ""
-        let pmRaw = Shell.run(kPmset, ["-g"]) ?? ""
-
-        let reading = parsePmsetBatt(battRaw)
-        let ioreg = parseIORegBattery(ioregRaw)
-        let powermode = parsePowermode(pmRaw)
-
-        // --- ETA (mirrors plugin 63-121) ---
-        var time = ""
-        switch reading.state {
-        case .discharging:
-            if let raw = reading.rawTime {
-                // 95% of macOS's estimate (it runs a little optimistic)
-                let mins = (hhmmToMinutes(raw) * 95) / 100
-                time = minutesToHHMM(mins)
-            }
-        case .charging:
-            if let raw = reading.rawTime { time = raw }
-        default:
-            break
-        }
-        // stop-gap right after unplug, before macOS has its own estimate
-        if !reading.plugged, time.isEmpty, let rawCur = ioreg.rawCurrentCapacity {
-            if let emins = etaStopgapMinutes(rawCurrent: rawCur, voltageMV: ioreg.voltageMV,
-                                             instantAmperageRaw: ioreg.instantAmperageRaw) {
-                time = minutesToHHMM(emins)
-            }
-        }
-
-        // humanized for the dropdown
-        let human: String? = time.isEmpty ? nil : humanize(time)
-
-        // menu-bar time: plugged -> time (may be empty); else time or "--:--".
-        // whole hours render compactly ("19:00" -> "19h").
-        var mbTime = reading.plugged ? time : (time.isEmpty ? "--:--" : time)
-        if mbTime.hasSuffix(":00") {
-            mbTime = String(mbTime.dropLast(3)) + "h"
-        }
-
-        let statusText = statusLabel(reading)
-
-        let snap = Snapshot(reading: reading, ioreg: ioreg, powermode: powermode,
-                            mbTime: mbTime, human: human, statusText: statusText,
-                            usage: usage24h)
-        DispatchQueue.main.async { [weak self] in
+        if pollInFlight { pollPending = true; return }
+        pollInFlight = true
+        pollQueue.async { [weak self] in
             guard let self = self else { return }
-            self.latest = snap
-            self.render(snap)
+            let battRaw = Shell.run(kPmset, ["-g", "batt"]) ?? ""
+            let ioregRaw = Shell.run(kIoreg, ["-rn", "AppleSmartBattery"]) ?? ""
+            let pmRaw = Shell.run(kPmset, ["-g"]) ?? ""
+
+            let reading = parsePmsetBatt(battRaw)
+            let ioreg = parseIORegBattery(ioregRaw)
+            let powermode = parsePowermode(pmRaw)
+
+            // --- ETA (mirrors plugin 63-121) ---
+            var time = ""
+            switch reading.state {
+            case .discharging:
+                if let raw = reading.rawTime {
+                    // 95% of macOS's estimate (it runs a little optimistic)
+                    let mins = (hhmmToMinutes(raw) * 95) / 100
+                    time = minutesToHHMM(mins)
+                }
+            case .charging:
+                if let raw = reading.rawTime { time = raw }
+            default:
+                break
+            }
+            // stop-gap right after unplug, before macOS has its own estimate
+            if !reading.plugged, time.isEmpty, let rawCur = ioreg.rawCurrentCapacity {
+                if let emins = etaStopgapMinutes(rawCurrent: rawCur, voltageMV: ioreg.voltageMV,
+                                                 instantAmperageRaw: ioreg.instantAmperageRaw) {
+                    time = minutesToHHMM(emins)
+                }
+            }
+
+            // humanized for the dropdown
+            let human: String? = time.isEmpty ? nil : humanize(time)
+
+            // menu-bar time: plugged -> time (may be empty); else time or "--:--".
+            // whole hours render compactly ("19:00" -> "19h").
+            var mbTime = reading.plugged ? time : (time.isEmpty ? "--:--" : time)
+            if mbTime.hasSuffix(":00") {
+                mbTime = String(mbTime.dropLast(3)) + "h"
+            }
+
+            let statusText = statusLabel(reading)
+
+            var snap = Snapshot(reading: reading, ioreg: ioreg, powermode: powermode,
+                                mbTime: mbTime, human: human, statusText: statusText,
+                                usage: nil)
+            DispatchQueue.main.async {
+                self.pollInFlight = false
+                snap.usage = self.usage24h          // usage24h is main-owned; read here
+                self.latest = snap
+                self.render(snap)
+                self.maybeRecomputeUsage()
+                if self.pollPending { self.pollPending = false; self.poll() }
+            }
         }
-        maybeRecomputeUsage()
     }
 
     // MARK: Render the status item
