@@ -26,6 +26,10 @@ private struct Snapshot {
 
 final class App: NSObject, NSApplicationDelegate {
     private var controller: StatusItemController!
+    /// Steps this icon aside while Curtain reveals the hidden block — the bar has
+    /// no spare room, so a reveal borrows slots from the apps that cooperate.
+    /// Restores itself on a timer if Curtain goes away mid-reveal.
+    private var yieldClient: YieldClient!
     private var watcher: PowerSourceWatcher!
     private var latest: Snapshot?
 
@@ -51,6 +55,8 @@ final class App: NSObject, NSApplicationDelegate {
             onBuildMenu: { [weak self] menu in self?.buildMenu(menu) }
         )
         controller.start()
+        yieldClient = YieldClient(item: controller)
+        yieldClient.start()
 
         // Instant plug/unplug refresh via IOKit power-source notifications,
         // replacing the plugin's power-watch launchd agent.
