@@ -2,10 +2,16 @@
 
 <p align="center"><img src="docs/mascot.png" width="160" alt="Battery Time mascot, from the Menubarn widget library"></p>
 
-A tiny [SwiftBar](https://github.com/swiftbar/SwiftBar) plugin that restores the
-estimated battery **time remaining** to the macOS menu bar — Apple removed the
+A tiny standalone macOS menu-bar app ("Battery Time.app", built on
+[StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit)) that restores
+the estimated battery **time remaining** to the menu bar — Apple removed the
 always-visible estimate in Sierra (2016) — with instant plug/unplug updates and
-a details dropdown.
+a details dropdown. Part of the [Menubarn](https://widgets.nicksmith.software)
+widget library.
+
+The app is the primary deliverable (see "Standalone Swift app" below). The
+original [SwiftBar](https://github.com/swiftbar/SwiftBar) plugin remains in the
+repo as a fallback; the "SwiftBar plugin" sections at the end cover it.
 
 ## What it shows
 
@@ -66,9 +72,8 @@ so it spaces like the native icons. State is shown by the fill colour and a bolt
 
 ## Standalone Swift app
 
-The repo now also ships a standalone Swift menu-bar app (`BatteryTime`,
-"Battery Time.app"), built on
-[StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit) — no SwiftBar
+The standalone Swift menu-bar app (`BatteryTime`, "Battery Time.app") is built
+on [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit) — no SwiftBar
 host required. All the `pmset` / `ioreg` / log parsing lives in a pure,
 unit-tested `BatteryTimeCore` library; the battery glyph is folded in from
 `render-title.swift`.
@@ -80,8 +85,8 @@ open "build/Battery Time.app"
 
 It replaces the `power-watch` launchd agent with **in-process IOKit power-source
 notifications** (instant plug/unplug updates) and reuses the existing
-passwordless-sudo rule for the energy-mode toggle. The SwiftBar plugin remains
-available and untouched.
+passwordless-sudo rule for the energy-mode toggle (see "Energy mode selector"
+below). The SwiftBar plugin remains in the repo as a fallback.
 
 ### Start at Login
 
@@ -94,14 +99,17 @@ Two ways to launch it automatically (use **one**, not both, or it may start twic
 - **macOS Login Items** — add the app under System Settings → General → Login Items
   ("Open at Login"). Same effect, and it doesn't require the in-app toggle.
 
-## Requirements
+## SwiftBar plugin (fallback)
+
+The original plugin still works if you would rather run it under SwiftBar
+instead of the standalone app. Requirements:
 
 - macOS laptop
 - [SwiftBar](https://github.com/swiftbar/SwiftBar) (`brew install swiftbar`)
 - Xcode Command Line Tools (`swiftc`) for the tight image rendering — optional;
   without it the menu-bar title falls back to (slightly wider) text
 
-## Install
+### Install (plugin)
 
 ```sh
 ./install.sh
@@ -138,7 +146,7 @@ takes effect where the hardware supports it — generally on AC.)
 Fixture-driven (via `PMSET_FIXTURE`): checks the menu-bar title and dropdown
 content for each power state, with no real battery required.
 
-## Uninstall
+### Uninstall (plugin)
 
 ```sh
 launchctl bootout "gui/$(id -u)/com.nicholassmith.battery-time-power-watch"
