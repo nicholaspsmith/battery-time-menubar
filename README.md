@@ -1,5 +1,7 @@
 # battery-time-menubar
 
+<p align="center"><img src="docs/mascot.png" width="160" alt="Battery Time mascot, from the Menubarn widget library"></p>
+
 A tiny [SwiftBar](https://github.com/swiftbar/SwiftBar) plugin that restores the
 estimated battery **time remaining** to the macOS menu bar — Apple removed the
 always-visible estimate in Sierra (2016) — with instant plug/unplug updates and
