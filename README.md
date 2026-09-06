@@ -41,9 +41,10 @@ so it spaces like the native icons. State is shown by the fill colour and a bolt
   nominal (so a near-zero idle draw can't project an unrealistic 20h+); once
   macOS has its own estimate it's shown as-is. Whole hours render compactly as `8h`.
 - Falls back to "`pct% [bolt] time`" text if `render-title` isn't compiled. Always
-  renders something, so it keeps its position in menu-bar managers like Ice.
+  renders something, so it keeps its position under menu-bar managers like
+  [Curtain](https://github.com/nicholaspsmith/menubar-curtain).
 
-**Dropdown** (click the item; SwiftBar's own default items are hidden — Option-click reveals them):
+**Dropdown** (click the item):
 
 - A native-style **Energy Mode** section at the top — Automatic / Low Power /
   High Power, the active one checkmarked; selecting one sets `pmset powermode`
@@ -63,12 +64,12 @@ so it spaces like the native icons. State is shown by the fill colour and a bolt
 ## Updates
 
 - Refreshes in place every 5s (estimate drift).
-- **Instant on plug/unplug** via `power-watch.sh`, a launchd agent that listens
-  to `pmset -g pslog` (the IOKit power-source notification the native battery
-  icon uses) and triggers SwiftBar's in-place refresh the moment AC changes.
-  In-place refresh keeps the Ice position (unlike a SwiftBar *streamable*
-  plugin, whose frame resets re-add the item and bounce it to Ice's hidden
-  section).
+- **Instant on plug/unplug** via in-process IOKit power-source notifications
+  (the same signal the native battery icon uses), so the title updates the
+  moment AC changes and the status item is never re-created — which is what
+  keeps its position under a menu-bar manager. (The SwiftBar fallback gets the
+  same effect from `power-watch.sh`, a launchd agent listening to
+  `pmset -g pslog`.)
 
 ## Standalone Swift app
 
@@ -168,6 +169,10 @@ sudo rm -f /etc/sudoers.d/battery-time-powermode
 - `show-tips.sh` — opens the current battery-longevity tips in a dialog
 - `test/test_battery_time.sh` — fixture tests
 - `docs/` — design notes and plan
+
+## Why not a SwiftBar plugin?
+
+This is a standalone `.app` built on [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit), not a script under a plugin host: no SwiftBar to install, a real AppKit menu instead of rendered stdout, event-driven updates instead of a re-run timer, and an icon that keeps its place in the bar. Plug/unplug updates come from in-process IOKit power-source notifications; the plugin version needed a separate launchd agent just to poke SwiftBar into refreshing. The full comparison is in [StatusItemKit's README](https://github.com/nicholaspsmith/StatusItemKit#why-not-swiftbar).
 
 ## The menu-bar suite
 
