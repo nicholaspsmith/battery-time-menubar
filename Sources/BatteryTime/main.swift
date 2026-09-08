@@ -174,7 +174,8 @@ final class App: NSObject, NSApplicationDelegate {
                 lead: leadTxt,
                 trailing: timeTxt,
                 ink: ink,
-                fill: fill
+                fill: fill,
+                face: DisplayPrefs.showFace
             )
             controller.setIcon(image)
         } else {
@@ -271,6 +272,7 @@ final class App: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Menu bar shows…", action: nil, keyEquivalent: ""))
         addToggle(menu, title: "Battery icon", on: DisplayPrefs.showIcon, action: #selector(toggleIcon))
+        addToggle(menu, title: "Battery face", on: DisplayPrefs.showFace, action: #selector(toggleFace))
         addToggle(menu, title: "Percentage", on: DisplayPrefs.showPct, action: #selector(togglePct))
         addToggle(menu, title: "Time remaining", on: DisplayPrefs.showTime, action: #selector(toggleTime))
 
@@ -320,6 +322,7 @@ final class App: NSObject, NSApplicationDelegate {
     }
 
     @objc private func toggleIcon() { DisplayPrefs.showIcon.toggle(); rerender() }
+    @objc private func toggleFace() { DisplayPrefs.showFace.toggle(); rerender() }
     @objc private func togglePct() { DisplayPrefs.showPct.toggle(); rerender() }
     @objc private func toggleTime() { DisplayPrefs.showTime.toggle(); rerender() }
 

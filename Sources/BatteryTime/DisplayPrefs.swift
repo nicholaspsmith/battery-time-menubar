@@ -10,6 +10,7 @@ enum DisplayPrefs {
     private static let kShowPct = "showPct"
     private static let kShowTime = "showTime"
     private static let kTempUnit = "tempUnit"
+    private static let kShowFace = "showFace"
 
     /// Reads a bool flag that defaults to `fallback` when never set.
     private static func boolOr(_ key: String, _ fallback: Bool) -> Bool {
@@ -19,6 +20,11 @@ enum DisplayPrefs {
     static var showIcon: Bool {
         get { boolOr(kShowIcon, true) }
         set { defaults.set(newValue, forKey: kShowIcon) }
+    }
+    /// The mascot's face on the battery glyph.
+    static var showFace: Bool {
+        get { boolOr(kShowFace, true) }
+        set { defaults.set(newValue, forKey: kShowFace) }
     }
     static var showPct: Bool {
         get { boolOr(kShowPct, false) }

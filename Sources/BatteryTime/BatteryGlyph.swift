@@ -18,7 +18,8 @@ public enum BatteryGlyph {
         lead: String,
         trailing: String,
         ink: NSColor,
-        fill fillKind: BatteryFill
+        fill fillKind: BatteryFill,
+        face: Bool = false
     ) -> NSImage {
         let batteryPct = max(0, min(100, pct))
 
@@ -90,6 +91,18 @@ public enum BatteryGlyph {
             fill.setFill(); NSBezierPath(roundedRect: fillRect, xRadius: 1.3, yRadius: 1.3).fill()
 
             let cx = originX + bodyW/2, cy = height/2
+            if face && !charging {
+                // The mascot's face: two eyes and a smile knocked out of the body,
+                // so they read in ink-or-fill whatever the charge behind them.
+                let eye = bodyH * 0.16
+                knockout({
+                    NSBezierPath(ovalIn: NSRect(x: cx - bodyW * 0.2 - eye/2, y: cy + bodyH * 0.06, width: eye, height: eye)).fill()
+                    NSBezierPath(ovalIn: NSRect(x: cx + bodyW * 0.2 - eye/2, y: cy + bodyH * 0.06, width: eye, height: eye)).fill()
+                    let smile = NSBezierPath()
+                    smile.appendArc(withCenter: NSPoint(x: cx, y: cy - bodyH * 0.02), radius: bodyW * 0.2, startAngle: 205, endAngle: 335, clockwise: false)
+                    smile.lineWidth = max(1, bodyH * 0.1); smile.lineCapStyle = .round; smile.stroke()
+                })
+            }
             if charging {
                 // a bolt bisecting the glyph like the native charging icon: a CUTOUT
                 // finished with a crisp ink border so it stays defined over both the
