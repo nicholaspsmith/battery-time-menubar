@@ -18,7 +18,11 @@ repo as a fallback; the "SwiftBar plugin" sections at the end cover it.
 **Menu bar** — a native-style **battery glyph** (fill proportional to charge) with
 the **percentage to its left** and the **time remaining to its right**, drawn as
 one tight image by the compiled `render-title` helper (auto-adapts to light/dark),
-so it spaces like the native icons. State is shown by the fill colour and a bolt:
+so it spaces like the native icons. The battery has a little face by default
+(**Battery face** in the dropdown turns it off); the charging bolt and the red
+low fill take its place when they apply. State is shown by the fill colour and a bolt:
+
+![The menu-bar icon](docs/menubar-icon.png)
 
 | State | Menu bar |
 |-------|----------|
@@ -186,7 +190,7 @@ colour, and cooperative hiding so no icon strands another.
 | [Claude Usage](https://github.com/nicholaspsmith/claude-usage-menubar) | Claude Code plan limits, resets, and live agent sessions |
 | [Apollo Monitor](https://github.com/nicholaspsmith/apollo-monitor-menubar) | Universal Audio Apollo monitor level, plus a UA process watchdog |
 | **Battery Time** | Time remaining, power mode, and 24h usage |
-| [VPN & DNS](https://github.com/nicholaspsmith/vpn-dns-menubar) | One dot for Mullvad + Tailscale state, with a DNS watcher |
+| [VPN & DNS](https://github.com/nicholaspsmith/vpn-dns-menubar) | A chameleon for Mullvad + Tailscale state, with a DNS watcher |
 | [Process Monitor](https://github.com/nicholaspsmith/MacOS_Process_Monitor) | Process-count sparkline against the per-UID limit |
 | [KeyLight](https://github.com/nicholaspsmith/keylight-menubar) | Ctrl+brightness keys remapped to keyboard backlight |
 | [MacRecorder](https://github.com/nicholaspsmith/MacRecorder) | Screen recording with system audio |
