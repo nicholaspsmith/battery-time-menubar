@@ -10,8 +10,8 @@ a details dropdown. Part of the [Menubarn](https://widgets.nicksmith.software)
 widget library.
 
 The app is the primary deliverable (see "Standalone Swift app" below). The
-original [SwiftBar](https://github.com/swiftbar/SwiftBar) plugin remains in the
-repo as a fallback; the "SwiftBar plugin" sections at the end cover it.
+original menu-bar plugin it replaced is still in the repo (`battery-time.5s.sh`,
+wired by `./install.sh`) but is retired and undocumented here.
 
 ## What it shows
 
@@ -71,15 +71,12 @@ low fill take its place when they apply. State is shown by the fill colour and a
 - **Instant on plug/unplug** via in-process IOKit power-source notifications
   (the same signal the native battery icon uses), so the title updates the
   moment AC changes and the status item is never re-created — which is what
-  keeps its position under a menu-bar manager. (The SwiftBar fallback gets the
-  same effect from `power-watch.sh`, a launchd agent listening to
-  `pmset -g pslog`.)
+  keeps its position under a menu-bar manager.
 
 ## Standalone Swift app
 
 The standalone Swift menu-bar app (`BatteryTime`, "Battery Time.app") is built
-on [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit) — no SwiftBar
-host required. All the `pmset` / `ioreg` / log parsing lives in a pure,
+on [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit). All the `pmset` / `ioreg` / log parsing lives in a pure,
 unit-tested `BatteryTimeCore` library; the battery glyph is folded in from
 `render-title.swift`.
 
@@ -91,7 +88,7 @@ open "build/Battery Time.app"
 It replaces the `power-watch` launchd agent with **in-process IOKit power-source
 notifications** (instant plug/unplug updates) and reuses the existing
 passwordless-sudo rule for the energy-mode toggle (see "Energy mode selector"
-below). The SwiftBar plugin remains in the repo as a fallback.
+below).
 
 ### Start at Login
 
@@ -103,29 +100,6 @@ Two ways to launch it automatically (use **one**, not both, or it may start twic
   (e.g. `~/Applications/Battery Time.app` → `build/Battery Time.app`), then toggle it.
 - **macOS Login Items** — add the app under System Settings → General → Login Items
   ("Open at Login"). Same effect, and it doesn't require the in-app toggle.
-
-## SwiftBar plugin (fallback)
-
-The original plugin still works if you would rather run it under SwiftBar
-instead of the standalone app. Requirements:
-
-- macOS laptop
-- [SwiftBar](https://github.com/swiftbar/SwiftBar) (`brew install swiftbar`)
-- Xcode Command Line Tools (`swiftc`) for the tight image rendering — optional;
-  without it the menu-bar title falls back to (slightly wider) text
-
-### Install (plugin)
-
-```sh
-./install.sh
-```
-
-This:
-1. Symlinks `battery-time.5s.sh` into `~/.config/SwiftBar/` (override with `SWIFTBAR_PLUGIN_DIR`).
-2. Installs and loads the `com.nicholassmith.battery-time-power-watch` launchd
-   agent (logs to `~/Library/Logs/battery-time-power-watch.log`).
-
-Then ⌘-drag the item next to the battery icon.
 
 ### Energy mode selector (one-time setup)
 
@@ -151,18 +125,9 @@ takes effect where the hardware supports it — generally on AC.)
 Fixture-driven (via `PMSET_FIXTURE`): checks the menu-bar title and dropdown
 content for each power state, with no real battery required.
 
-### Uninstall (plugin)
-
-```sh
-launchctl bootout "gui/$(id -u)/com.nicholassmith.battery-time-power-watch"
-rm ~/Library/LaunchAgents/com.nicholassmith.battery-time-power-watch.plist
-rm ~/.config/SwiftBar/battery-time.5s.sh
-sudo rm -f /etc/sudoers.d/battery-time-powermode
-```
-
 ## Files
 
-- `battery-time.5s.sh` — the SwiftBar plugin (menu-bar title + dropdown)
+- `battery-time.5s.sh` — the retired menu-bar plugin (menu-bar title + dropdown)
 - `power-watch.sh` — `pmset -g pslog` watcher for instant plug/unplug refresh
 - `com.nicholassmith.battery-time-power-watch.plist` — launchd agent template
 - `install.sh` — installer (plugin symlink + launchd agent)
