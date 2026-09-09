@@ -19,8 +19,9 @@ wired by `./install.sh`) but is retired and undocumented here.
 the **percentage to its left** and the **time remaining to its right**, drawn as
 one tight image by the compiled `render-title` helper (auto-adapts to light/dark),
 so it spaces like the native icons. The battery has a little face by default
-(**Battery face** in the dropdown turns it off); the charging bolt and the red
-low fill take its place when they apply. State is shown by the fill colour and a bolt:
+(**Battery face** in the dropdown turns it off): it smiles, frowns when the
+battery is low, and steps aside for the bolt while charging. State is shown by
+the fill colour and a bolt:
 
 ![The menu-bar icon](docs/menubar-icon.png)
 

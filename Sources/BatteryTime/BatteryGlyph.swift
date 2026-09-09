@@ -92,17 +92,26 @@ public enum BatteryGlyph {
 
             let cx = originX + bodyW/2, cy = height/2
             if face && !charging {
-                // The mascot's face: two eyes and a smile knocked out of the body,
-                // so they read in ink-or-fill whatever the charge behind them.
+                // The mascot's face: two eyes and a mouth. Knocked out of the body
+                // so they read in ink-or-fill whatever the charge behind them —
+                // except when the battery is low, where the body is mostly empty:
+                // then the face is drawn in ink, and it frowns.
                 let eye = bodyH * 0.15
-                knockout({
-                    NSBezierPath(ovalIn: NSRect(x: cx - bodyW * 0.17 - eye/2, y: cy + bodyH * 0.08, width: eye, height: eye)).fill()
-                    NSBezierPath(ovalIn: NSRect(x: cx + bodyW * 0.17 - eye/2, y: cy + bodyH * 0.08, width: eye, height: eye)).fill()
-                    // A short, shallow smile that stays clear of the outline.
-                    let smile = NSBezierPath()
-                    smile.appendArc(withCenter: NSPoint(x: cx, y: cy + bodyH * 0.02), radius: bodyH * 0.2, startAngle: 215, endAngle: 325, clockwise: false)
-                    smile.lineWidth = max(0.9, bodyH * 0.08); smile.lineCapStyle = .round; smile.stroke()
-                })
+                let low = fillKind == .red
+                let eyes = [NSRect(x: cx - bodyW * 0.17 - eye/2, y: cy + bodyH * 0.08, width: eye, height: eye),
+                            NSRect(x: cx + bodyW * 0.17 - eye/2, y: cy + bodyH * 0.08, width: eye, height: eye)]
+                let mouth = NSBezierPath()
+                if low {
+                    mouth.appendArc(withCenter: NSPoint(x: cx, y: cy - bodyH * 0.34), radius: bodyH * 0.2, startAngle: 35, endAngle: 145, clockwise: false)
+                } else {
+                    mouth.appendArc(withCenter: NSPoint(x: cx, y: cy + bodyH * 0.02), radius: bodyH * 0.2, startAngle: 215, endAngle: 325, clockwise: false)
+                }
+                mouth.lineWidth = max(0.9, bodyH * 0.08); mouth.lineCapStyle = .round
+                let draw = {
+                    for e in eyes { NSBezierPath(ovalIn: e).fill() }
+                    mouth.stroke()
+                }
+                if low { ink.set(); draw() } else { knockout(draw) }
             }
             if charging {
                 // a bolt bisecting the glyph like the native charging icon: a CUTOUT
