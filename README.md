@@ -47,7 +47,7 @@ the fill colour and a bolt:
   macOS has its own estimate it's shown as-is. Whole hours render compactly as `8h`.
 - Falls back to "`pct% [bolt] time`" text if `render-title` isn't compiled. Always
   renders something, so it keeps its position under menu-bar managers like
-  [Curtain](https://github.com/nicholaspsmith/menubar-curtain).
+  [Barn](https://github.com/nicholaspsmith/menubar-barn).
 
 **Dropdown** (click the item):
 
@@ -162,7 +162,7 @@ colour, and cooperative hiding so no icon strands another.
 | [MacRecorder](https://github.com/nicholaspsmith/MacRecorder) | Screen recording with system audio |
 | [Media Tracking Killer](https://github.com/nicholaspsmith/media-tracking-killer-menubar) | Kills Apple's media tracking daemons |
 | [Download Recycler](https://github.com/nicholaspsmith/download-recycler-menubar) | Sweeps stale files out of ~/Downloads |
-| [Curtain](https://github.com/nicholaspsmith/menubar-curtain) | Hides a block of status icons by width, so it cannot strand one |
+| [Barn](https://github.com/nicholaspsmith/menubar-barn) | Hides a block of status icons by width, so it cannot strand one |
 
 | Framework | |
 |---|---|
