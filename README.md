@@ -93,8 +93,20 @@ below).
 
 ### Start at Login
 
-Two ways to launch it automatically (use **one**, not both, or it may start twice):
+Three ways to launch it automatically (use **one**, not several, or it may start
+twice):
 
+- **Command line** — scriptable, and what a fresh setup should use:
+
+  ```sh
+  "$HOME/Applications/Battery Time.app/Contents/MacOS/BatteryTime" --login on   # or: off, status
+  ```
+
+  A bare `--login`, or `--login status`, only reports the current state and
+  changes nothing. It has to be the *installed* binary, for the same
+  bundle-identity reason as the toggle below. Note `./install.sh` here only wires
+  the retired SwiftBar plugin, so it does **not** do this for you — run it
+  yourself after `./scripts/build-app.sh`.
 - **In-app toggle** — the menu's **Start at Login** item registers the app via
   `SMAppService` (bundle-ID based, not a LaunchAgent). macOS requires the app to
   live in `/Applications` or `~/Applications`, so point a symlink there first
