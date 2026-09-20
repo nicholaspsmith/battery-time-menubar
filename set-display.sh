@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+#
+# Copyright (c) 2026 Nicholas Smith
+
 # set-display.sh <icon|pct|time> — toggle a menu-bar display element on/off.
 # Called by the dropdown's "Menu bar shows..." items. Defaults: icon=1 pct=0 time=1.
 set -eu

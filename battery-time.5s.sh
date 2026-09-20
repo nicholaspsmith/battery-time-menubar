@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+#
+# Copyright (c) 2026 Nicholas Smith
+
 # battery-time.5s.sh
 # SwiftBar plugin: battery ETA (H:MM) in the menu bar, refreshed in place every 5s
 # (plus instant updates from the power-watch.sh launchd agent on plug/unplug).

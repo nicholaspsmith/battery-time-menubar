@@ -1,3 +1,9 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2026 Nicholas Smith
+
 // render-title.swift
 // Renders the menu-bar item to a tight PNG (base64 on stdout), composed
 // left-to-right: optional lead text (e.g. "82%"), an optional battery glyph

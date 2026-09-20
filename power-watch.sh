@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+#
+# Copyright (c) 2026 Nicholas Smith
+
 # power-watch.sh
 # Instant power-state updates for battery-time. Watches macOS AC plug/unplug via
 # `pmset -g pslog` (the IOKit power-source notification the native battery icon
