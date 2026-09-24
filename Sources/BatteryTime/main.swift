@@ -296,6 +296,7 @@ final class App: NSObject, NSApplicationDelegate {
 
         // --- Quit (no target -> standard responder chain) ---
         menu.addItem(.separator())
+        menu.addItem(AppVersion.menuItem())
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
     }
 
