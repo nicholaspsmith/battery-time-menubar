@@ -1,0 +1,65 @@
+# Changelog
+
+Every push to `main` is a release. Add a `## [X.Y.Z] - YYYY-MM-DD` section at
+the top (minor for features, patch for fixes); GitHub tags it and publishes
+the section as the release notes. Versions follow [Semantic
+Versioning](https://semver.org/).
+
+## [1.0.1] - 2026-09-23
+
+- chore: regenerate the menu-bar icon image
+
+## [1.0.0] - 2026-09-23
+
+- feat: the menu shows the version it was built from
+- LICENSE: name the copyright holder above the MPL text
+- License: Mozilla Public License 2.0
+- docs: document the --login flag
+- feat: --login on|off|status from the command line
+- docs: Curtain is now Barn
+- docs: Apollo Monitor described without the vendor name
+- feat: the battery frowns when low, drawn in ink over the empty body
+- docs: drop instructions that assume other software the reader may not use
+- docs: the character menu-bar icon, rendered from code, and what its states mean
+- fix: smaller battery face that stays inside the outline
+- feat: a face on the battery glyph (Menu bar shows ▸ Battery face)
+- feat: app icon from the Menubarn mascot
+- docs: why a standalone app beats a SwiftBar plugin
+- docs: README leads with the standalone app; SwiftBar plugin is the fallback
+- docs: add the Menubarn mascot to the README
+- Advertise the menu-bar suite
+- feat: yield the status item during a curtain peek
+- Run the pmset/ioreg poll off the main thread so it can't freeze the menu
+- docs: document Start at Login options in the README
+- fix: battery glyph uses opaque adaptive ink (not translucent labelColor)
+- fix: battery glyph adapts to the menu-bar appearance
+- docs: note the standalone Swift app
+- feat: instant plug/unplug via IOKit power-source notifications
+- feat: BatteryTime app (status glyph, full dropdown, polling)
+- feat: battery glyph image (ported from render-title.swift)
+- feat: 24h usage parse + battery tips triggers
+- feat: battery math (health, humanize, temp, ETA stopgap)
+- feat: ioreg AppleSmartBattery parsing
+- feat: package skeleton + pmset -g batt parsing
+- docs: add Swift app implementation plan
+- docs: add menu-bar glyph states (charging/high-power/low-power/low/normal) to README
+- feat: High Power = blue fill (incl. while charging), drop 💪
+- feat: native-style battery glyph with %-left, 💪 High Power, fixed charging bolt
+- feat: show 95% of macOS's remaining estimate
+- change: cap only our stop-gap estimate, show macOS's estimate as-is
+- feat: cap on-battery estimate at nominal; render whole hours as "Nh"
+- feat: nominal time estimate on unplug when discharge draw is 0
+- fix: battery glyph by default, bolt only while charging
+- revert: menu bar back to bolt + time (drop the battery glyph)
+- feat: show an instant time estimate on unplug before macOS computes one
+- feat: visible charging bolt (outline halo) + circular Energy Mode icons
+- feat: icon/%/time display toggles + native "Energy Mode" dropdown header
+- feat: native-style battery icon in the menu bar
+- feat: collapse battery tips to a "Battery Life Tips" item with a popup
+- feat: behavior-based battery-longevity tips in the dropdown
+- feat: 24-hour on-battery vs plugged usage in the dropdown
+- feat: °C/°F temperature unit toggle in the dropdown
+- feat: battery health, power draw, adapter & temp/voltage/charge in dropdown
+- feat: 3-mode energy selector, hidden defaults, tight image-rendered title
+- feat: bolt/ETA menu bar, details dropdown, instant plug/unplug updates
+- feat: battery time-remaining menu-bar SwiftBar plugin
