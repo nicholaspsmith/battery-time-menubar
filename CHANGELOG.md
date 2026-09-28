@@ -8,6 +8,14 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.1.0] - 2026-09-27
+
+- With the face on, the battery is taller (17pt instead of 13pt) to make more of the menu bar's height and give the face room
+- The battery face's mood follows the charge: a smile from 60%, a flat "meh" line from 35%, a slight frown below that, and a full frown when low
+- The battery face stays visible across the empty part of the battery: where it crosses past the charge it is drawn in the menu-bar ink instead of cut out; over a Low Power Mode yellow fill it is drawn in black
+- While charging, the face stays (instead of being replaced by the bolt): the fill turns green and it grins with happy ^ ^ eyes
+- Plugged in but not charging (full, or macOS holding the charge at a limit), the battery becomes a smiling plug
+
 ## [1.0.1] - 2026-09-23
 
 - chore: regenerate the menu-bar icon image

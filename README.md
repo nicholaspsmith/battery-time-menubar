@@ -19,8 +19,12 @@ wired by `./install.sh`) but is retired and undocumented here.
 the **percentage to its left** and the **time remaining to its right**, drawn as
 one tight image by the compiled `render-title` helper (auto-adapts to light/dark),
 so it spaces like the native icons. The battery has a little face by default
-(**Battery face** in the dropdown turns it off): it smiles, frowns when the
-battery is low, and steps aside for the bolt while charging. State is shown by
+(**Battery face** in the dropdown turns it off). Its mood follows the charge:
+a smile when full, a flat "meh" line around half, a slight frown below a third,
+and a frown when low. While charging the fill turns green and it grins with
+happy ^ ^ eyes; plugged in but not charging, the battery becomes a smiling plug.
+Where the face crosses the empty part of the battery it switches to ink, so it
+stays visible at any charge. State is shown by
 the fill colour and a bolt:
 
 ![The menu-bar icon](docs/menubar-icon.png)
@@ -35,7 +39,8 @@ the fill colour and a bolt:
 
 (Examples rendered by the same `render-title` helper the menu bar uses.)
 
-- **Charging** — the glyph is bisected by a **bolt** cutout (and shows time-to-full).
+- **Charging** — with the face on, a green fill and a grin (with the face off, the glyph is bisected by a **bolt** cutout) and it shows time-to-full.
+- **Plugged in, not charging** — with the face on, a smiling **plug** replaces the battery.
 - **High Power mode** — the glyph fill turns **blue** (including while charging).
 - **Low Power mode** — the glyph fill turns **yellow** (like the native icon).
 - On battery the fill turns **red** at ≤20%; time is to-empty.
