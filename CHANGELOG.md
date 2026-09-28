@@ -8,6 +8,10 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.1.1] - 2026-09-28
+
+- `install.sh` now installs the app: it builds Battery Time.app, links it into ~/Applications, asks whether to turn on Start at Login (skipped when it is already on, or when there is no terminal to ask in), and relaunches it. It also removes the retired SwiftBar plugin link and its power-watch launchd agent, which the app replaces. `./install.sh --swiftbar` still installs the plugin instead
+
 ## [1.1.0] - 2026-09-27
 
 - With the face on, the battery is taller (17pt instead of 13pt) to make more of the menu bar's height and give the face room

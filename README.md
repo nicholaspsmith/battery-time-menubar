@@ -11,7 +11,7 @@ widget library.
 
 The app is the primary deliverable (see "Standalone Swift app" below). The
 original menu-bar plugin it replaced is still in the repo (`battery-time.5s.sh`,
-wired by `./install.sh`) but is retired and undocumented here.
+wired only by `./install.sh --swiftbar`) but is retired and undocumented here.
 
 ## What it shows
 
@@ -87,8 +87,8 @@ unit-tested `BatteryTimeCore` library; the battery glyph is folded in from
 `render-title.swift`.
 
 ```sh
-./scripts/build-app.sh          # produces build/Battery Time.app
-open "build/Battery Time.app"
+./install.sh                    # build, link into ~/Applications, ask about Start at Login, launch
+./scripts/build-app.sh          # or just build: produces build/Battery Time.app
 ```
 
 It replaces the `power-watch` launchd agent with **in-process IOKit power-source
@@ -109,9 +109,8 @@ twice):
 
   A bare `--login`, or `--login status`, only reports the current state and
   changes nothing. It has to be the *installed* binary, for the same
-  bundle-identity reason as the toggle below. Note `./install.sh` here only wires
-  the retired SwiftBar plugin, so it does **not** do this for you — run it
-  yourself after `./scripts/build-app.sh`.
+  bundle-identity reason as the toggle below. `./install.sh` asks whether to do
+  this when run in a terminal.
 - **In-app toggle** — the menu's **Start at Login** item registers the app via
   `SMAppService` (bundle-ID based, not a LaunchAgent). macOS requires the app to
   live in `/Applications` or `~/Applications`, so point a symlink there first
@@ -148,7 +147,7 @@ content for each power state, with no real battery required.
 - `battery-time.5s.sh` — the retired menu-bar plugin (menu-bar title + dropdown)
 - `power-watch.sh` — `pmset -g pslog` watcher for instant plug/unplug refresh
 - `com.nicholassmith.battery-time-power-watch.plist` — launchd agent template
-- `install.sh` — installer (plugin symlink + launchd agent)
+- `install.sh` — installer (app; `--swiftbar` wires the retired plugin + launchd agent instead)
 - `install-powermode-sudoers.sh` — one-time passwordless-sudo rule for the toggle
 - `render-title.swift` — compiles to `bin/render-title`; draws the battery glyph (+ % / time, charging bolt, coloured fill)
 - `set-tempunit.sh` — persists the dropdown °C/°F temperature unit
