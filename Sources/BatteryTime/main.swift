@@ -177,6 +177,7 @@ final class App: NSObject, NSApplicationDelegate {
             let image = BatteryGlyph.image(
                 pct: pct!,
                 charging: isCharging,
+                plugged: snap.reading.plugged,
                 lead: leadTxt,
                 trailing: timeTxt,
                 ink: ink,
