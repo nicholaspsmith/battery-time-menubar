@@ -51,8 +51,7 @@ the fill colour and a bolt:
   nominal (so a near-zero idle draw can't project an unrealistic 20h+); once
   macOS has its own estimate it's shown as-is. Whole hours render compactly as `8h`.
 - Falls back to "`pct% [bolt] time`" text if `render-title` isn't compiled. Always
-  renders something, so it keeps its position under menu-bar managers like
-  [Barn](https://github.com/nicholaspsmith/menubar-barn).
+  renders something, so it keeps its position under menu-bar managers.
 
 **Dropdown** (click the item):
 
@@ -178,7 +177,7 @@ colour, and cooperative hiding so no icon strands another.
 | [MacRecorder](https://github.com/nicholaspsmith/MacRecorder) | Screen recording with system audio |
 | [Media Tracking Killer](https://github.com/nicholaspsmith/media-tracking-killer-menubar) | Kills Apple's media tracking daemons |
 | [Download Recycler](https://github.com/nicholaspsmith/download-recycler-menubar) | Sweeps stale files out of ~/Downloads |
-| [Barn](https://github.com/nicholaspsmith/menubar-barn) | Hides a block of status icons by width, so it cannot strand one |
+| [Barn](https://github.com/nicholaspsmith/menubar-barn) | Sunset: macOS 26 and earlier only. Hid a block of status icons by width; on macOS 27 use System Settings ▸ Menu Bar |
 
 | Framework | |
 |---|---|
