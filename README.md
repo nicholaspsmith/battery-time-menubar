@@ -1,13 +1,12 @@
 # battery-time-menubar
 
-<p align="center"><img src="docs/mascot.png" width="160" alt="Battery Time mascot, from the Menubarn widget library"></p>
+<p align="center"><img src="docs/mascot.png" width="160" alt="Battery Time mascot, from Menumon"></p>
 
 A tiny standalone macOS menu-bar app ("Battery Time.app", built on
 [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit)) that restores
 the estimated battery **time remaining** to the menu bar — Apple removed the
 always-visible estimate in Sierra (2016) — with instant plug/unplug updates and
-a details dropdown. Part of the [Menubarn](https://widgets.nicksmith.software)
-widget library.
+a details dropdown. Part of the [Menumon](https://menumon.nicksmith.software).
 
 The app is the primary deliverable (see "Standalone Swift app" below). The
 original menu-bar plugin it replaced is still in the repo (`battery-time.5s.sh`,
