@@ -2,31 +2,39 @@
 
 <p align="center"><img src="docs/mascot.png" width="160" alt="Battery Time mascot, from Menumon"></p>
 
-A tiny standalone macOS menu-bar app ("Battery Time.app", built on
-[StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit)) that restores
-the estimated battery **time remaining** to the menu bar — Apple removed the
-always-visible estimate in Sierra (2016) — with instant plug/unplug updates and
-a details dropdown. Part of the [Menumon](https://menumon.nicksmith.software).
+A standalone macOS menu-bar app ("Battery Time.app", built on
+[StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit)) that puts the
+estimated battery **time remaining** back in the menu bar, updates the instant
+you plug in or unplug, and shows battery details in its dropdown. Part of
+[Menumon](https://menumon.nicksmith.software).
 
-The app is the primary deliverable (see "Standalone Swift app" below). The
-original menu-bar plugin it replaced is still in the repo (`battery-time.5s.sh`,
-wired only by `./install.sh --swiftbar`) but is retired and undocumented here.
+## Requirements
+
+- macOS 13 or later, on a Mac with a battery
+- Swift toolchain (Xcode or the Command Line Tools)
+- [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit) cloned beside this repo (`../StatusItemKit`)
+
+## Install
+
+```sh
+./install.sh                    # build, link into ~/Applications, ask about Start at Login, launch
+./scripts/build-app.sh          # build only: produces build/Battery Time.app
+```
 
 ## What it shows
 
-**Menu bar** — a native-style **battery glyph** (fill proportional to charge) with
-the **percentage to its left** and the **time remaining to its right**, drawn as
-one tight image by the compiled `render-title` helper (auto-adapts to light/dark),
-so it spaces like the native icons. The battery has a little face by default
-(**Battery face** in the dropdown turns it off). Its mood follows the charge:
-a smile when full, a flat "meh" line around half, a slight frown below a third,
-and a frown when low. While charging the fill turns green and it grins with
-happy ^ ^ eyes; plugged in but not charging, the battery becomes a smiling plug.
-Where the face crosses the empty part of the battery it switches to ink, so it
-stays visible at any charge. State is shown by
-the fill colour and a bolt:
+### Menu bar
+
+A battery glyph (fill proportional to charge) with the **percentage** to its
+left and the **time remaining** to its right, drawn as one image that follows
+the menu bar's light/dark appearance.
 
 ![The menu-bar icon](docs/menubar-icon.png)
+
+By default the battery has a face (**Battery face** in the dropdown turns it
+off). Its mood follows the charge: a smile when full, a flat line around half,
+a slight frown below a third, a frown when low. Where the face crosses the
+empty part of the battery it is drawn in the menu-bar ink so it stays visible.
 
 | State | Menu bar |
 |-------|----------|
@@ -36,134 +44,121 @@ the fill colour and a bolt:
 | High Power mode | ![high power](screenshots/menubar-high-power.png) |
 | Low Power mode | ![low power](screenshots/menubar-low-power.png) |
 
-(Examples rendered by the same `render-title` helper the menu bar uses.)
+- **On battery** — time to empty; the fill turns **red** at ≤20%.
+- **Charging** — time to full. With the face on, the fill turns green and the
+  face grins; with it off, a **bolt** cuts through the glyph.
+- **Plugged in, not charging** (full, or macOS holding the charge at a limit) —
+  with the face on, a smiling **plug** replaces the battery.
+- **High Power mode** — **blue** fill, including while charging.
+- **Low Power mode** — **yellow** fill.
 
-- **Charging** — with the face on, a green fill and a grin (with the face off, the glyph is bisected by a **bolt** cutout) and it shows time-to-full.
-- **Plugged in, not charging** — with the face on, a smiling **plug** replaces the battery.
-- **High Power mode** — the glyph fill turns **blue** (including while charging).
-- **Low Power mode** — the glyph fill turns **yellow** (like the native icon).
-- On battery the fill turns **red** at ≤20%; time is to-empty.
-- Independent **icon / percentage / time** toggles ("Menu bar shows…" in the dropdown).
-- Right after unplug macOS takes ~30–60s to compute its estimate; until then the
-  plugin shows its own (measured discharge, or a nominal ~12 W when idle) so a
-  time appears immediately instead of `--:--`. **Our stop-gap** is capped at the
-  nominal (so a near-zero idle draw can't project an unrealistic 20h+); once
-  macOS has its own estimate it's shown as-is. Whole hours render compactly as `8h`.
-- Falls back to "`pct% [bolt] time`" text if `render-title` isn't compiled. Always
-  renders something, so it keeps its position under menu-bar managers.
+Time details:
 
-**Dropdown** (click the item):
+- The on-battery time is 95% of macOS's estimate, which runs a little optimistic.
+- For the 30–60 s after unplugging, before macOS has an estimate, the app
+  projects its own from the measured draw, capped at a nominal ~12 W so a
+  near-idle draw cannot show 20h+. Without either, it shows `--:--`.
+- Whole hours render compactly as `8h`.
+- The icon, percentage and time toggle independently ("Menu bar shows…"). With
+  the icon off it shows plain text (`pct% time`). It always shows something, so
+  it keeps its position under menu-bar managers.
 
-- A native-style **Energy Mode** section at the top — Automatic / Low Power /
-  High Power, the active one checkmarked; selecting one sets `pmset powermode`
-- Battery percentage
-- A detailed status line — `3 hr 14 min until empty`, `Charging - 1 hr 20 min until full`, `Fully charged`, …
-- Extra stats (one `ioreg` call): health + cycle count, live power draw (V×A),
-  adapter wattage, and temperature (with a °C/°F toggle) / voltage / raw charge (mAh)
-- 24-hour usage — time on battery vs plugged in, parsed from `pmset -g log`
-  (which is slow, so it's recomputed in the background and cached ~10 min — the
-  scrape never blocks a refresh)
-- Battery-longevity **tips** — a "Battery Life Tips" item (shown only when a
-  trigger fires: deep discharges, prolonged high charge, running warm, or cycle
-  count near rated life) that opens a dialog with the advice (keeps the dropdown narrow)
-- **Menu bar shows…** — toggle the battery icon / percentage / time independently
-- **Open Battery Settings...** — opens the Battery pane in System Settings
+### Dropdown
 
-## Updates
+- **Energy Mode** — Automatic / Low Power / High Power, the active one
+  checkmarked; selecting one runs `pmset powermode` (see
+  [Energy mode selector](#energy-mode-selector-one-time-setup))
+- Battery percentage and a status line (`3 hr 14 min until empty`,
+  `Charging - 1 hr 20 min until full`, `Fully charged`, …)
+- From one `ioreg` call: health and cycle count, live power draw (V×A), adapter
+  wattage, temperature (with a °C/°F toggle), voltage and raw charge (mAh)
+- 24-hour usage — time on battery vs plugged in, parsed from `pmset -g log`.
+  That is slow, so it is recomputed in the background at most every 10 minutes
+  and never blocks a refresh
+- **Battery Life Tips** — shown only when a trigger fires (deep discharges,
+  prolonged high charge, running warm, or cycle count near rated life); opens a
+  dialog with the advice
+- **Menu bar shows…** — Battery icon, Battery face, Percentage, Time remaining
+- **Start at Login**, **Open Battery Settings…**, version, **Quit**
 
-- Refreshes in place every 5s (estimate drift).
-- **Instant on plug/unplug** via in-process IOKit power-source notifications
-  (the same signal the native battery icon uses), so the title updates the
-  moment AC changes and the status item is never re-created — which is what
-  keeps its position under a menu-bar manager.
+## How it works
 
-## Standalone Swift app
+- `BatteryTimeCore` is a pure, unit-tested library holding all the `pmset`,
+  `ioreg` and `pmset -g log` parsing and the time math.
+- The `BatteryTime` app polls every 5 s (the estimate drifts) and runs the
+  blocking `pmset`/`ioreg` calls off the main thread; overlapping refreshes are
+  coalesced.
+- Plug/unplug refreshes instantly via in-process IOKit power-source
+  notifications (`PowerSourceWatcher`). The status item is updated in place,
+  never re-created, which keeps its position under a menu-bar manager.
+- `BatteryGlyph` draws the menu-bar image.
 
-The standalone Swift menu-bar app (`BatteryTime`, "Battery Time.app") is built
-on [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit). All the `pmset` / `ioreg` / log parsing lives in a pure,
-unit-tested `BatteryTimeCore` library; the battery glyph is folded in from
-`render-title.swift`.
+## Start at Login (optional)
 
-```sh
-./install.sh                    # build, link into ~/Applications, ask about Start at Login, launch
-./scripts/build-app.sh          # or just build: produces build/Battery Time.app
-```
+Use **one** of these, not several, or it may start twice:
 
-It replaces the `power-watch` launchd agent with **in-process IOKit power-source
-notifications** (instant plug/unplug updates) and reuses the existing
-passwordless-sudo rule for the energy-mode toggle (see "Energy mode selector"
-below).
-
-### Start at Login
-
-Three ways to launch it automatically (use **one**, not several, or it may start
-twice):
-
-- **Command line** — scriptable, and what a fresh setup should use:
+- **Command line** — scriptable; what a fresh setup should use. It must be the
+  *installed* binary, because `SMAppService` registers the calling bundle:
 
   ```sh
   "$HOME/Applications/Battery Time.app/Contents/MacOS/BatteryTime" --login on   # or: off, status
   ```
 
-  A bare `--login`, or `--login status`, only reports the current state and
-  changes nothing. It has to be the *installed* binary, for the same
-  bundle-identity reason as the toggle below. `./install.sh` asks whether to do
-  this when run in a terminal.
-- **In-app toggle** — the menu's **Start at Login** item registers the app via
-  `SMAppService` (bundle-ID based, not a LaunchAgent). macOS requires the app to
-  live in `/Applications` or `~/Applications`, so point a symlink there first
-  (e.g. `~/Applications/Battery Time.app` → `build/Battery Time.app`), then toggle it.
-- **macOS Login Items** — add the app under System Settings → General → Login Items
-  ("Open at Login"). Same effect, and it doesn't require the in-app toggle.
+  A bare `--login` or `--login status` only reports the state. `./install.sh`
+  asks whether to do this when run in a terminal.
+- **In-app toggle** — the menu's **Start at Login** item (`SMAppService`, not a
+  LaunchAgent). macOS requires the app to live in `/Applications` or
+  `~/Applications`, which `install.sh`'s symlink satisfies.
+- **macOS Login Items** — System Settings → General → Login Items.
 
-### Energy mode selector (one-time setup)
+## Energy mode selector (one-time setup)
 
-Changing the energy mode runs `pmset powermode`, which requires root. To make the
-selector one-click with no password prompt, install a tightly-scoped sudoers rule
-(permits only `pmset -b/-c powermode 0|1|2` — nothing else):
+`pmset powermode` needs root. For a one-click selector with no password
+prompt, install a sudoers rule that permits only `pmset -b/-c powermode 0|1|2`:
 
 ```sh
 sudo ./install-powermode-sudoers.sh
 ```
 
-On Apple Silicon the energy mode is `powermode` (0 = Automatic, 1 = Low Power,
-2 = High Power). The selector sets the mode for the **current** power source, so
-changing it on battery won't disturb a High Power-on-AC setting. (High Power only
-takes effect where the hardware supports it — generally on AC.)
+On Apple Silicon `powermode` is 0 = Automatic, 1 = Low Power, 2 = High Power.
+The selector sets the mode for the **current** power source only, so changing
+it on battery leaves a High Power-on-AC setting alone. High Power only takes
+effect where the hardware supports it, generally on AC.
 
 ## Test
 
 ```sh
-./test/test_battery_time.sh
+swift test                      # BatteryTimeCore unit tests
+./test/test_battery_time.sh     # fixture tests for the SwiftBar plugin
 ```
 
-Fixture-driven (via `PMSET_FIXTURE`): checks the menu-bar title and dropdown
-content for each power state, with no real battery required.
+The plugin tests are fixture-driven (`PMSET_FIXTURE`): they check the title and
+dropdown for each power state with no real battery.
 
 ## Files
 
-- `battery-time.5s.sh` — the retired menu-bar plugin (menu-bar title + dropdown)
-- `power-watch.sh` — `pmset -g pslog` watcher for instant plug/unplug refresh
-- `com.nicholassmith.battery-time-power-watch.plist` — launchd agent template
-- `install.sh` — installer (app; `--swiftbar` wires the retired plugin + launchd agent instead)
-- `install-powermode-sudoers.sh` — one-time passwordless-sudo rule for the toggle
-- `render-title.swift` — compiles to `bin/render-title`; draws the battery glyph (+ % / time, charging bolt, coloured fill)
-- `set-tempunit.sh` — persists the dropdown °C/°F temperature unit
-- `set-display.sh` — toggles the menu-bar icon / percentage / time prefs
-- `show-tips.sh` — opens the current battery-longevity tips in a dialog
-- `test/test_battery_time.sh` — fixture tests
-- `docs/` — design notes and plan
+- `Sources/BatteryTimeCore/` — parsing and time math (unit-tested)
+- `Sources/BatteryTime/` — the app: status item, menu, glyph, power-source watcher
+- `scripts/build-app.sh` — builds `build/Battery Time.app` via StatusItemKit's `make-app.sh`
+- `install.sh` — installs the app; `./install.sh --swiftbar` instead wires the
+  legacy SwiftBar plugin and its `power-watch` launchd agent
+- `install-powermode-sudoers.sh` — one-time passwordless-sudo rule for the energy-mode selector
+- Legacy SwiftBar plugin, kept as a fallback and not otherwise documented:
+  `battery-time.5s.sh`, `power-watch.sh`,
+  `com.nicholassmith.battery-time-power-watch.plist`, `render-title.swift`
+  (compiles to `bin/render-title`), `set-tempunit.sh`, `set-display.sh`,
+  `show-tips.sh`, `test/test_battery_time.sh`
+- `docs/` — design notes and plans
 
 ## Why not a SwiftBar plugin?
 
-This is a standalone `.app` built on [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit), not a script under a plugin host: no SwiftBar to install, a real AppKit menu instead of rendered stdout, event-driven updates instead of a re-run timer, and an icon that keeps its place in the bar. Plug/unplug updates come from in-process IOKit power-source notifications; the plugin version needed a separate launchd agent just to poke SwiftBar into refreshing. The full comparison is in [StatusItemKit's README](https://github.com/nicholaspsmith/StatusItemKit#why-not-swiftbar).
+A standalone `.app` built on [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit) needs no SwiftBar, has a real AppKit menu instead of rendered stdout, updates on events instead of a re-run timer, and keeps its place in the bar. Plug/unplug updates come from in-process IOKit notifications; the plugin needs a separate launchd agent to make SwiftBar refresh. The full comparison is in [StatusItemKit's README](https://github.com/nicholaspsmith/StatusItemKit#why-not-swiftbar).
 
 ## The menu-bar suite
 
-Part of a suite of macOS menu-bar apps that share one framework, one
-build-and-sign script, and one installer. They are designed to sit in the
-same bar together: consistent menus, a common **Icon** picker for shape and
-colour, and cooperative hiding so no icon strands another.
+A suite of macOS menu-bar apps that share one framework, one build-and-sign
+script and one installer, built to sit in the same bar: consistent menus, a
+common **Icon** picker, and cooperative hiding so no icon strands another.
 
 | App | What it does |
 |---|---|
@@ -204,7 +199,9 @@ a release titled `vX.Y.Z`. Without a new version:
 The one exception is `[no release]` in the tip commit's message, for changes
 nothing a user runs (setup, CI, developer docs): it passes every check with no
 version bump and no tag. Never tag or create a release by hand, and never
-`gh pr merge --admin` past a failing check — fix the PR. After merging, `git pull` for the tag and rebuild. `install.sh` re-arms the hook on a fresh clone.
+`gh pr merge --admin` past a failing check — fix the PR. After merging,
+`git pull` for the tag and rebuild. `install.sh` re-arms the hook on a fresh
+clone.
 See [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one) for the whole rule.
 
 ## License
