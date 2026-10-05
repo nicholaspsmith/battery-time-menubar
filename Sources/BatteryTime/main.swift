@@ -37,6 +37,23 @@ final class App: NSObject, NSApplicationDelegate {
     /// Restores itself on a timer if Curtain goes away mid-reveal.
     private var yieldClient: YieldClient!
     private var watcher: PowerSourceWatcher!
+
+    // Volta's animations (face on only). Once a minute, in his turn with the
+    // other mascots, he blinks while his charge sloshes about — or, stuffed,
+    // burps. While charging he sips through his straw on a slow loop.
+    private var minuteCue: MinuteCue!
+    private var minuteT: TimeInterval?
+    private static let minuteDuration: TimeInterval = 1.4
+    private lazy var minuteAnimation = IconAnimation(duration: Self.minuteDuration, frame: { [weak self] t in
+        self?.minuteT = t
+        self?.rerender()
+    }, completion: { [weak self] in
+        self?.minuteT = nil
+        self?.rerender()
+    })
+    private static let sipPeriod: TimeInterval = 2.4
+    private var sipTimer: Timer?
+    private var sipStarted = Date()
     private var latest: Snapshot?
 
     // 24h cache: recomputed off the poll thread, at most every 10 min.
@@ -68,6 +85,13 @@ final class App: NSObject, NSApplicationDelegate {
         // replacing the plugin's power-watch launchd agent.
         watcher = PowerSourceWatcher(onChange: { [weak self] in self?.refreshNow() })
         watcher.start()
+
+        minuteCue = MinuteCue { [weak self] in
+            guard let self, DisplayPrefs.showFace, DisplayPrefs.showIcon,
+                  self.latest?.reading.state != .charging else { return }
+            self.minuteAnimation.start()
+        }
+        minuteCue.start()
     }
 
     // MARK: Poll
@@ -174,6 +198,10 @@ final class App: NSObject, NSApplicationDelegate {
             let ink = NSColor(name: nil) { appearance in
                 appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? .white : .black
             }
+            let face = DisplayPrefs.showFace
+            let stuffed = face && snap.reading.plugged && !isCharging
+            updateSipLoop(face && isCharging)
+            let minute = minuteT.map { CGFloat($0 / Self.minuteDuration) }
             let image = BatteryGlyph.image(
                 pct: pct!,
                 charging: isCharging,
@@ -182,7 +210,13 @@ final class App: NSObject, NSApplicationDelegate {
                 trailing: timeTxt,
                 ink: ink,
                 fill: fill,
-                face: DisplayPrefs.showFace
+                face: face,
+                sip: sipTimer == nil ? nil : CGFloat(Date().timeIntervalSince(sipStarted)
+                    .truncatingRemainder(dividingBy: Self.sipPeriod) / Self.sipPeriod),
+                slosh: stuffed ? nil : minute,
+                burp: stuffed ? minute : nil,
+                // The blink takes the first half second of the minute's turn.
+                blink: stuffed ? nil : minuteT.flatMap { $0 < 0.5 ? CGFloat($0 / 0.5) : nil }
             )
             controller.setIcon(image)
         } else {
@@ -335,6 +369,22 @@ final class App: NSObject, NSApplicationDelegate {
     @objc private func toggleTime() { DisplayPrefs.showTime.toggle(); rerender() }
 
     private func rerender() { if let s = latest { render(s) } }
+
+    /// The sip loop runs only while there is a straw to sip through, and not
+    /// at all under Reduce Motion. A dozen frames a second is plenty for a
+    /// bead of charge sliding down a straw.
+    private func updateSipLoop(_ drinking: Bool) {
+        let wanted = drinking && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        if wanted, sipTimer == nil {
+            sipStarted = Date()
+            let t = Timer(timeInterval: 1.0 / 12, repeats: true) { [weak self] _ in self?.rerender() }
+            RunLoop.main.add(t, forMode: .common)
+            sipTimer = t
+        } else if !wanted, let t = sipTimer {
+            t.invalidate()
+            sipTimer = nil
+        }
+    }
 
     @objc private func toggleLogin() { LoginItem.toggle() }
 
