@@ -311,29 +311,47 @@ public enum BatteryGlyph {
 
                 if drinking {
                     // The straw: a bendy one coming up from below the battery,
-                    // bending at the top so its short level end is in his
-                    // mouth. White with pink stripes, outlined in ink so it
-                    // reads on a light bar and a dark one.
+                    // bent just enough — well short of a right angle — for its
+                    // top to reach his mouth. White with candy stripes that run
+                    // diagonally right across it, outlined in ink so it reads on
+                    // a light bar and a dark one.
                     let lips = NSPoint(x: cx + bodyH * 0.08, y: mouthY)
-                    let bend = NSPoint(x: cx + bodyW * 0.2, y: mouthY)
-                    let base = NSPoint(x: cx + bodyW * 0.2, y: 0.9)
+                    let run = bodyW * 0.2 - bodyH * 0.08
+                    let bend = NSPoint(x: lips.x + run, y: mouthY - run * 0.7)
+                    let base = NSPoint(x: bend.x, y: 0.9)
                     let straw = NSBezierPath()
                     straw.move(to: base)
                     straw.line(to: bend)
                     straw.line(to: lips)
                     straw.lineCapStyle = .round; straw.lineJoinStyle = .round
-                    straw.lineWidth = 2.6; ink.setStroke(); straw.stroke()
-                    straw.lineWidth = 1.5; NSColor.white.setStroke(); straw.stroke()
-                    let stripes = straw.copy() as! NSBezierPath
-                    stripes.lineWidth = 1.5; stripes.lineCapStyle = .butt
-                    stripes.setLineDash([0.9, 1.1], count: 2, phase: 0)
-                    NSColor.systemPink.setStroke(); stripes.stroke()
+                    straw.lineWidth = 2.8; ink.setStroke(); straw.stroke()
+                    straw.lineWidth = 2.0; NSColor.white.setStroke(); straw.stroke()
+                    if let ctx = NSGraphicsContext.current?.cgContext {
+                        // Clip to the straw's white body, then lay diagonal stripes
+                        // across the whole width so each band meets the outline.
+                        let cg = CGMutablePath()
+                        cg.move(to: base); cg.addLine(to: bend); cg.addLine(to: lips)
+                        ctx.saveGState()
+                        ctx.addPath(cg.copy(strokingWithWidth: 2.0, lineCap: .round, lineJoin: .round, miterLimit: 4))
+                        ctx.clip()
+                        ctx.setStrokeColor(NSColor.systemPink.cgColor)
+                        ctx.setLineWidth(0.85)
+                        var x = lips.x - 6
+                        while x < base.x + 4 {
+                            ctx.move(to: CGPoint(x: x, y: base.y - 1)); ctx.addLine(to: CGPoint(x: x + 14, y: base.y + 13))
+                            x += 1.9
+                        }
+                        ctx.strokePath()
+                        ctx.restoreGState()
+                    }
                     // A bead of charge running up it and across into his mouth.
                     if let t = sip, t < 0.6 {
                         let u = t / 0.6
-                        let rise = bend.y - base.y, across = bend.x - lips.x
+                        let rise = bend.y - base.y, across = hypot(bend.x - lips.x, bend.y - lips.y)
                         let d = u * (rise + across)
-                        let at = d < rise ? NSPoint(x: base.x, y: base.y + d) : NSPoint(x: bend.x - (d - rise), y: bend.y)
+                        let at = d < rise ? NSPoint(x: base.x, y: base.y + d)
+                            : NSPoint(x: bend.x + (lips.x - bend.x) * (d - rise) / across,
+                                      y: bend.y + (lips.y - bend.y) * (d - rise) / across)
                         let r: CGFloat = 0.85
                         NSColor.systemGreen.blended(withFraction: 0.25, of: .black)?.setFill()
                         NSBezierPath(ovalIn: NSRect(x: at.x - r, y: at.y - r, width: r * 2, height: r * 2)).fill()

@@ -4,7 +4,7 @@
 
 <p align="center"><img src="docs/animation.png" alt="Volta blinking while his charge sloshes, sipping through his straw while charging, and burping when full"></p>
 
-**Version 1.2.2** · [Changelog](https://github.com/nicholaspsmith/battery-time-menubar/releases)
+**Version 1.3.0** · [Changelog](https://github.com/nicholaspsmith/battery-time-menubar/releases)
 
 A standalone macOS menu-bar app ("Battery Time.app", built on
 [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit)) that puts the
