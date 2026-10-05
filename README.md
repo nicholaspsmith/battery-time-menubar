@@ -4,7 +4,7 @@
 
 <p align="center"><img src="docs/animation.png" alt="Volta blinking while his charge sloshes, sipping through his straw while charging, and burping when full"></p>
 
-**Version 1.2.1** · [Changelog](https://github.com/nicholaspsmith/battery-time-menubar/releases)
+**Version 1.2.2** · [Changelog](https://github.com/nicholaspsmith/battery-time-menubar/releases)
 
 A standalone macOS menu-bar app ("Battery Time.app", built on
 [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit)) that puts the
@@ -59,11 +59,11 @@ so it stays visible.
 - **High Power mode** — **blue** fill, including while charging.
 - **Low Power mode** — **yellow** fill.
 
-Once a minute Volta blinks while his charge sloshes from side to side, or,
+Now and then Volta blinks while his charge sloshes from side to side, or,
 when stuffed, burps. When several Menumon mascots are running they take turns,
 a second apart: Archimedes (Claude Usage), Menu Pimp (Mac Daddy), Carol
 (SoundChain), Iguanamous (VPN & DNS), Armonitor (Monitor Lizard), then Volta,
-counting only the ones that are running. The minute animation and the sip are
+counting only the ones that are running. The animation and the sip are
 skipped when Reduce Motion is on.
 
 Time details:
