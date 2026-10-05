@@ -144,30 +144,16 @@ effect where the hardware supports it, generally on AC.
 
 ```sh
 swift test                      # BatteryTimeCore unit tests
-./test/test_battery_time.sh     # fixture tests for the SwiftBar plugin
 ```
-
-The plugin tests are fixture-driven (`PMSET_FIXTURE`): they check the title and
-dropdown for each power state with no real battery.
 
 ## Files
 
 - `Sources/BatteryTimeCore/` — parsing and time math (unit-tested)
 - `Sources/BatteryTime/` — the app: status item, menu, glyph, power-source watcher
 - `scripts/build-app.sh` — builds `build/Battery Time.app` via StatusItemKit's `make-app.sh`
-- `install.sh` — installs the app; `./install.sh --swiftbar` instead wires the
-  legacy SwiftBar plugin and its `power-watch` launchd agent
+- `install.sh` — installs the app
 - `install-powermode-sudoers.sh` — one-time passwordless-sudo rule for the energy-mode selector
-- Legacy SwiftBar plugin, kept as a fallback and not otherwise documented:
-  `battery-time.5s.sh`, `power-watch.sh`,
-  `com.nicholassmith.battery-time-power-watch.plist`, `render-title.swift`
-  (compiles to `bin/render-title`), `set-tempunit.sh`, `set-display.sh`,
-  `show-tips.sh`, `test/test_battery_time.sh`
 - `docs/` — design notes and plans
-
-## Why not a SwiftBar plugin?
-
-A standalone `.app` built on [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit) needs no SwiftBar, has a real AppKit menu instead of rendered stdout, updates on events instead of a re-run timer, and keeps its place in the bar. Plug/unplug updates come from in-process IOKit notifications; the plugin needs a separate launchd agent to make SwiftBar refresh. The full comparison is in [StatusItemKit's README](https://github.com/nicholaspsmith/StatusItemKit#why-not-swiftbar).
 
 ## The menu-bar suite
 
