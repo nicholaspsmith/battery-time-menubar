@@ -224,18 +224,16 @@ public enum BatteryGlyph {
                     let r = bodyH * (0.085 + 0.035 * gulp)
                     fills.append(NSBezierPath(ovalIn: NSRect(x: cx - r, y: mouthY - r, width: r * 2, height: r * 2)))
                 } else if stuffed {
-                    // Cheeks puffed out either side of a small closed mouth; the
-                    // burp lets them down and opens the mouth for a moment.
+                    // Small round cheeks either side of a closed mouth; the burp
+                    // opens the mouth for a moment.
                     let b = burp ?? 0
-                    let out: CGFloat = b > 0.2 && b < 0.75 ? 0.45 : 1
+                    let burping = b > 0.2 && b < 0.75
                     for side in [-1.0, 1.0] as [CGFloat] {
-                        // Wide ovals hanging low beside the mouth: cheeks, not
-                        // a second pair of eyes.
-                        let rx = bodyH * 0.17 * out, ry = bodyH * 0.14 * out
+                        let rx = bodyH * 0.077, ry = bodyH * 0.063
                         let x = cx + side * bodyW * 0.2
                         fills.append(NSBezierPath(ovalIn: NSRect(x: x - rx, y: mouthY - bodyH * 0.03 - ry, width: rx * 2, height: ry * 2)))
                     }
-                    if out < 1 {
+                    if burping {
                         let r = bodyH * 0.07
                         fills.append(NSBezierPath(ovalIn: NSRect(x: cx - r, y: mouthY - r, width: r * 2, height: r * 2)))
                     } else {
@@ -312,13 +310,17 @@ public enum BatteryGlyph {
                 }
 
                 if drinking {
-                    // The straw: a bendy one from his lips, up and out through the
-                    // top of the battery. White with pink stripes, outlined in ink
-                    // so it reads on a light bar and a dark one.
+                    // The straw: a bendy one coming up from below the battery,
+                    // bending at the top so its short level end is in his
+                    // mouth. White with pink stripes, outlined in ink so it
+                    // reads on a light bar and a dark one.
+                    let lips = NSPoint(x: cx + bodyH * 0.08, y: mouthY)
+                    let bend = NSPoint(x: cx + bodyW * 0.2, y: mouthY)
+                    let base = NSPoint(x: cx + bodyW * 0.2, y: 0.9)
                     let straw = NSBezierPath()
-                    straw.move(to: NSPoint(x: cx, y: mouthY))
-                    straw.line(to: NSPoint(x: cx, y: bodyRect.maxY - bodyH * 0.08))
-                    straw.line(to: NSPoint(x: cx + bodyW * 0.1, y: height - 0.9))
+                    straw.move(to: base)
+                    straw.line(to: bend)
+                    straw.line(to: lips)
                     straw.lineCapStyle = .round; straw.lineJoinStyle = .round
                     straw.lineWidth = 2.6; ink.setStroke(); straw.stroke()
                     straw.lineWidth = 1.5; NSColor.white.setStroke(); straw.stroke()
@@ -326,19 +328,12 @@ public enum BatteryGlyph {
                     stripes.lineWidth = 1.5; stripes.lineCapStyle = .butt
                     stripes.setLineDash([0.9, 1.1], count: 2, phase: 0)
                     NSColor.systemPink.setStroke(); stripes.stroke()
-                    // A bead of charge running down it into his mouth.
+                    // A bead of charge running up it and across into his mouth.
                     if let t = sip, t < 0.6 {
                         let u = t / 0.6
-                        let top = NSPoint(x: cx + bodyW * 0.09, y: height - 1.6)
-                        let bend = NSPoint(x: cx, y: bodyRect.maxY - bodyH * 0.08)
-                        let lips = NSPoint(x: cx, y: mouthY)
-                        let firstLeg = hypot(top.x - bend.x, top.y - bend.y)
-                        let secondLeg = hypot(bend.x - lips.x, bend.y - lips.y)
-                        let d = u * (firstLeg + secondLeg)
-                        let at: NSPoint = d < firstLeg
-                            ? NSPoint(x: top.x + (bend.x - top.x) * d / firstLeg, y: top.y + (bend.y - top.y) * d / firstLeg)
-                            : NSPoint(x: bend.x + (lips.x - bend.x) * (d - firstLeg) / secondLeg,
-                                      y: bend.y + (lips.y - bend.y) * (d - firstLeg) / secondLeg)
+                        let rise = bend.y - base.y, across = bend.x - lips.x
+                        let d = u * (rise + across)
+                        let at = d < rise ? NSPoint(x: base.x, y: base.y + d) : NSPoint(x: bend.x - (d - rise), y: bend.y)
                         let r: CGFloat = 0.85
                         NSColor.systemGreen.blended(withFraction: 0.25, of: .black)?.setFill()
                         NSBezierPath(ovalIn: NSRect(x: at.x - r, y: at.y - r, width: r * 2, height: r * 2)).fill()

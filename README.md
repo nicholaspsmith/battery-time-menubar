@@ -4,7 +4,7 @@
 
 <p align="center"><img src="docs/animation.png" alt="Volta blinking while his charge sloshes, sipping through his straw while charging, and burping when full"></p>
 
-**Version 1.2.0** · [Changelog](https://github.com/nicholaspsmith/battery-time-menubar/releases)
+**Version 1.2.1** · [Changelog](https://github.com/nicholaspsmith/battery-time-menubar/releases)
 
 A standalone macOS menu-bar app ("Battery Time.app", built on
 [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit)) that puts the
@@ -52,11 +52,10 @@ so it stays visible.
 
 - **On battery** — time to empty; the fill turns **red** at ≤20%.
 - **Charging** — time to full. With the face on, the fill turns green and Volta
-  drinks through a straw, a bead of charge running down it every couple of
-  seconds; with the face off, a **bolt** cuts through the glyph.
+  drinks through a straw that comes up from below, a bead of charge running up
+  it every couple of seconds; with the face off, a **bolt** cuts through the glyph.
 - **Plugged in, not charging** (full, or macOS holding the charge at a limit) —
-  with the face on, Volta is stuffed: eyes closed, cheeks puffed, glowing
-  yellow.
+  with the face on, Volta is full: eyes contentedly closed, glowing yellow.
 - **High Power mode** — **blue** fill, including while charging.
 - **Low Power mode** — **yellow** fill.
 
