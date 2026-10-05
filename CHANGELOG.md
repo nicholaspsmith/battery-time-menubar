@@ -8,6 +8,10 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.2.2] - 2026-10-05
+
+- Full and plugged in, Volta has no cheeks; they appear only while he burps
+
 ## [1.2.1] - 2026-10-05
 
 - Volta's straw comes up from below the battery and into his mouth from the side

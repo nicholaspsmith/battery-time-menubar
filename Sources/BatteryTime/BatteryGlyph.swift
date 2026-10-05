@@ -224,11 +224,11 @@ public enum BatteryGlyph {
                     let r = bodyH * (0.085 + 0.035 * gulp)
                     fills.append(NSBezierPath(ovalIn: NSRect(x: cx - r, y: mouthY - r, width: r * 2, height: r * 2)))
                 } else if stuffed {
-                    // Small round cheeks either side of a closed mouth; the burp
-                    // opens the mouth for a moment.
+                    // A small closed mouth. The burp opens it for a moment, with
+                    // little cheeks either side while it lasts.
                     let b = burp ?? 0
                     let burping = b > 0.2 && b < 0.75
-                    for side in [-1.0, 1.0] as [CGFloat] {
+                    for side in [-1.0, 1.0] as [CGFloat] where burping {
                         let rx = bodyH * 0.077, ry = bodyH * 0.063
                         let x = cx + side * bodyW * 0.2
                         fills.append(NSBezierPath(ovalIn: NSRect(x: x - rx, y: mouthY - bodyH * 0.03 - ry, width: rx * 2, height: ry * 2)))
