@@ -2,6 +2,10 @@
 
 <p align="center"><img src="docs/mascot.png" width="160" alt="Battery Time mascot, from Menumon"></p>
 
+<p align="center"><img src="docs/animation.png" alt="Volta blinking while his charge sloshes, sipping through his straw while charging, and burping when full"></p>
+
+**Version 1.2.0** · [Changelog](https://github.com/nicholaspsmith/battery-time-menubar/releases)
+
 A standalone macOS menu-bar app ("Battery Time.app", built on
 [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit)) that puts the
 estimated battery **time remaining** back in the menu bar, updates the instant
@@ -31,26 +35,37 @@ the menu bar's light/dark appearance.
 
 ![The menu-bar icon](docs/menubar-icon.png)
 
-By default the battery has a face (**Battery face** in the dropdown turns it
-off). Its mood follows the charge: a smile when full, a flat line around half,
-a slight frown below a third, a frown when low. Where the face crosses the
-empty part of the battery it is drawn in the menu-bar ink so it stays visible.
+By default the battery has a face — Volta (**Battery face** in the dropdown
+turns it off). On battery his mood follows the charge: a smile when full, a
+flat line around half, a slight frown below a third, a frown when low. Where
+the face crosses the empty part of the battery it is drawn in the menu-bar ink
+so it stays visible.
 
 | State | Menu bar |
 |-------|----------|
 | On battery | ![on battery](screenshots/menubar-discharging.png) |
 | Low (≤20%) | ![low](screenshots/menubar-low.png) |
 | Charging | ![charging](screenshots/menubar-charging.png) |
+| Plugged in, not charging | ![full](screenshots/menubar-full.png) |
 | High Power mode | ![high power](screenshots/menubar-high-power.png) |
 | Low Power mode | ![low power](screenshots/menubar-low-power.png) |
 
 - **On battery** — time to empty; the fill turns **red** at ≤20%.
-- **Charging** — time to full. With the face on, the fill turns green and the
-  face grins; with it off, a **bolt** cuts through the glyph.
+- **Charging** — time to full. With the face on, the fill turns green and Volta
+  drinks through a straw, a bead of charge running down it every couple of
+  seconds; with the face off, a **bolt** cuts through the glyph.
 - **Plugged in, not charging** (full, or macOS holding the charge at a limit) —
-  with the face on, a smiling **plug** replaces the battery.
+  with the face on, Volta is stuffed: eyes closed, cheeks puffed, glowing
+  yellow.
 - **High Power mode** — **blue** fill, including while charging.
 - **Low Power mode** — **yellow** fill.
+
+Once a minute Volta blinks while his charge sloshes from side to side, or,
+when stuffed, burps. When several Menumon mascots are running they take turns,
+a second apart: Archimedes (Claude Usage), Menu Pimp (Mac Daddy), Carol
+(SoundChain), Iguanamous (VPN & DNS), Armonitor (Monitor Lizard), then Volta,
+counting only the ones that are running. The minute animation and the sip are
+skipped when Reduce Motion is on.
 
 Time details:
 
