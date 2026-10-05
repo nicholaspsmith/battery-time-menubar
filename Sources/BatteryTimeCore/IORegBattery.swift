@@ -30,8 +30,11 @@ public func parseIORegBattery(_ raw: String) -> IORegBattery {
     return IORegBattery(
         cycleCount: intVal("CycleCount"),
         designCapacity: intVal("DesignCapacity"),
-        rawMaxCapacity: intVal("AppleRawMaxCapacity"),
-        rawCurrentCapacity: intVal("AppleRawCurrentCapacity"),
+        // Newer macOS drops the AppleRaw keys; BatteryData carries the same
+        // figures (NominalChargeCapacity is what System Settings' Maximum
+        // Capacity is worked out from).
+        rawMaxCapacity: intVal("AppleRawMaxCapacity") ?? intVal("NominalChargeCapacity"),
+        rawCurrentCapacity: intVal("AppleRawCurrentCapacity") ?? intVal("RemainingCapacity"),
         voltageMV: intVal("Voltage"),
         temperatureCentiC: intVal("Temperature"),
         instantAmperageRaw: firstMatch(in: raw, pattern: "\"InstantAmperage\"\\s*=\\s*(-?[0-9]+)"),

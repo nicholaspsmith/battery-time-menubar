@@ -23,6 +23,13 @@ public enum BatteryFill {
 /// charging (full, or held at a charge limit) he is stuffed, cheeks puffed,
 /// glowing yellow.
 public enum BatteryGlyph {
+    /// How worn a battery at `health` percent looks: new at 100, a grandpa
+    /// from 80 down.
+    public static func age(health: Int?) -> CGFloat {
+        guard let h = health else { return 0 }
+        return max(0, min(1, CGFloat(100 - h) / 20))
+    }
+
     public static func image(
         pct: Int,
         charging: Bool,
@@ -35,7 +42,8 @@ public enum BatteryGlyph {
         sip: CGFloat? = nil,
         slosh: CGFloat? = nil,
         burp: CGFloat? = nil,
-        blink: CGFloat? = nil
+        blink: CGFloat? = nil,
+        age: CGFloat = 0
     ) -> NSImage {
         // Animation inputs, each nil when still:
         // - sip: 0..<1 through one sip while charging (a bead of charge runs
@@ -44,6 +52,9 @@ public enum BatteryGlyph {
         //   tilts side to side like liquid in a jar, and he grins).
         // - burp: 0...1 through the once-a-minute burp while stuffed.
         // - blink: 0...1 through the once-a-minute blink on battery.
+        // Not animated:
+        // - age: 0...1, how worn the battery is (`BatteryGlyph.age(health:)`).
+        //   Wrinkles deepen with it; at 1 he is a grandpa, bushy brows and all.
         let batteryPct = max(0, min(100, pct))
         let greenFill = face && charging && fillKind == .none
         let drinking = face && charging
@@ -157,6 +168,34 @@ public enum BatteryGlyph {
                 NSGraphicsContext.current?.saveGraphicsState()
                 inner.addClip(); liquid.fill()
                 NSGraphicsContext.current?.restoreGraphicsState()
+            } else if let t = sip, greenFill, fillRect.width > 0 {
+                // Drinking: the charge is liquid coming in. Its edge ripples and
+                // bubbles rise through it, each looping once per sip.
+                let inner = NSBezierPath(roundedRect: NSRect(x: bodyRect.minX + fillInset, y: fillRect.minY, width: innerW, height: fillRect.height),
+                                         xRadius: 1.3 * k, yRadius: 1.3 * k)
+                let liquid = NSBezierPath()
+                liquid.move(to: NSPoint(x: fillRect.minX - 1, y: fillRect.minY - 1))
+                let steps = 8
+                for i in 0...steps {
+                    let f = CGFloat(i) / CGFloat(steps)
+                    let wave = fillRect.width < innerW ? 0.7 * sin(2 * .pi * (f * 1.2 - t * 2)) : 0
+                    liquid.line(to: NSPoint(x: fillRect.maxX + wave, y: fillRect.minY + f * fillRect.height))
+                }
+                liquid.line(to: NSPoint(x: fillRect.minX - 1, y: fillRect.maxY + 1))
+                liquid.close()
+                liquidEdge = liquid
+                NSGraphicsContext.current?.saveGraphicsState()
+                inner.addClip(); liquid.addClip()
+                liquid.fill()
+                NSColor.white.withAlphaComponent(0.6).setFill()
+                let bubbles: [(x: CGFloat, phase: CGFloat, r: CGFloat)] = [(0.12, 0.0, 0.55), (0.3, 0.55, 0.75), (0.68, 0.25, 0.6), (0.86, 0.75, 0.7)]
+                for b in bubbles {
+                    let u = (t + b.phase).truncatingRemainder(dividingBy: 1)
+                    let x = fillRect.minX + fillRect.width * b.x + 0.4 * sin(2 * .pi * u * 2)
+                    let y = fillRect.minY + u * (fillRect.height + 2) - 1
+                    NSBezierPath(ovalIn: NSRect(x: x - b.r, y: y - b.r, width: b.r * 2, height: b.r * 2)).fill()
+                }
+                NSGraphicsContext.current?.restoreGraphicsState()
             } else {
                 fillShape.fill()
             }
@@ -267,6 +306,63 @@ public enum BatteryGlyph {
                     }
                 }
 
+                // Age lines: forehead creases between the eyes, crow's feet at
+                // their outer corners, and laugh lines beside the mouth, each
+                // appearing in turn and growing longer and bolder with age.
+                let a = max(0, min(1, age))
+                if a > 0 {
+                    let lw = 0.35 + 0.45 * a
+                    func line(_ pts: [NSPoint]) {
+                        let l = NSBezierPath()
+                        l.move(to: pts[0])
+                        if pts.count == 3 { l.curve(to: pts[2], controlPoint1: pts[1], controlPoint2: pts[1]) }
+                        else { pts.dropFirst().forEach { l.line(to: $0) } }
+                        l.lineWidth = lw; l.lineCapStyle = .round
+                        strokes.append(l)
+                    }
+                    // How far along (0...1) a feature that starts at `from` is.
+                    func grown(_ from: CGFloat) -> CGFloat { max(0, min(1, (a - from) / (1 - from) * 1.5)) }
+                    let foreheadYs = [cy + bodyH * 0.31, cy + bodyH * 0.23]
+                    for (i, y) in foreheadYs.enumerated() {
+                        let g = grown(CGFloat(i) * 0.35)
+                        guard g > 0 else { continue }
+                        let half = bodyW * 0.1 * (0.4 + 0.6 * g)
+                        line([NSPoint(x: cx - half, y: y), NSPoint(x: cx, y: y + bodyH * 0.025), NSPoint(x: cx + half, y: y)])
+                    }
+                    let crow = grown(0.15)
+                    if crow > 0 {
+                        for side in [-1.0, 1.0] as [CGFloat] {
+                            let x0 = cx + side * (bodyW * 0.17 + eye * 0.95)
+                            let len = bodyH * 0.11 * (0.4 + 0.6 * crow)
+                            line([NSPoint(x: x0, y: eyeY + eye * 0.75), NSPoint(x: x0 + side * len, y: eyeY + eye * 0.75 + len * 0.45)])
+                            if crow > 0.5 {
+                                line([NSPoint(x: x0, y: eyeY + eye * 0.25), NSPoint(x: x0 + side * len, y: eyeY + eye * 0.25 - len * 0.45)])
+                            }
+                        }
+                    }
+                    let laugh = grown(0.5)
+                    if laugh > 0 {
+                        for side in [-1.0, 1.0] as [CGFloat] {
+                            let x0 = cx + side * bodyH * 0.3
+                            let top = mouthY + bodyH * 0.08, len = bodyH * 0.16 * (0.4 + 0.6 * laugh)
+                            line([NSPoint(x: x0, y: top), NSPoint(x: x0 + side * bodyH * 0.06, y: top - len * 0.5),
+                                  NSPoint(x: x0 + side * bodyH * 0.02, y: top - len)])
+                        }
+                    }
+                    if a >= 1 {
+                        // Grandpa's bushy brows, tilted down at the outside.
+                        for ex in eyeXs {
+                            let side: CGFloat = ex < cx ? -1 : 1
+                            let y = eyeY + eye * 1.6
+                            let b = NSBezierPath()
+                            b.move(to: NSPoint(x: ex - side * eye * 0.45, y: y + eye * 0.1))
+                            b.line(to: NSPoint(x: ex + side * eye * 0.8, y: y - eye * 0.15))
+                            b.lineWidth = max(1, bodyH * 0.07); b.lineCapStyle = .round
+                            strokes.append(b)
+                        }
+                    }
+                }
+
                 let draw = {
                     for f in fills { f.fill() }
                     for st in strokes { st.stroke() }
@@ -313,8 +409,7 @@ public enum BatteryGlyph {
                     // The straw: a bendy one coming up from below the battery,
                     // bent just enough — well short of a right angle — for its
                     // top to reach his mouth. White with candy stripes that run
-                    // diagonally right across it, outlined in ink so it reads on
-                    // a light bar and a dark one.
+                    // diagonally right across it.
                     let lips = NSPoint(x: cx + bodyH * 0.08, y: mouthY)
                     let run = bodyW * 0.2 - bodyH * 0.08
                     let bend = NSPoint(x: lips.x + run, y: mouthY - run * 0.7)
@@ -324,15 +419,14 @@ public enum BatteryGlyph {
                     straw.line(to: bend)
                     straw.line(to: lips)
                     straw.lineCapStyle = .round; straw.lineJoinStyle = .round
-                    straw.lineWidth = 2.8; ink.setStroke(); straw.stroke()
-                    straw.lineWidth = 2.0; NSColor.white.setStroke(); straw.stroke()
+                    straw.lineWidth = 2.2; NSColor.white.setStroke(); straw.stroke()
                     if let ctx = NSGraphicsContext.current?.cgContext {
                         // Clip to the straw's white body, then lay diagonal stripes
                         // across the whole width so each band meets the outline.
                         let cg = CGMutablePath()
                         cg.move(to: base); cg.addLine(to: bend); cg.addLine(to: lips)
                         ctx.saveGState()
-                        ctx.addPath(cg.copy(strokingWithWidth: 2.0, lineCap: .round, lineJoin: .round, miterLimit: 4))
+                        ctx.addPath(cg.copy(strokingWithWidth: 2.2, lineCap: .round, lineJoin: .round, miterLimit: 4))
                         ctx.clip()
                         ctx.setStrokeColor(NSColor.systemPink.cgColor)
                         ctx.setLineWidth(0.85)
@@ -344,17 +438,20 @@ public enum BatteryGlyph {
                         ctx.strokePath()
                         ctx.restoreGState()
                     }
-                    // A bead of charge running up it and across into his mouth.
-                    if let t = sip, t < 0.6 {
-                        let u = t / 0.6
+                    // Bubbles of charge running up it and across into his mouth,
+                    // a third of a sip apart.
+                    if let t = sip {
                         let rise = bend.y - base.y, across = hypot(bend.x - lips.x, bend.y - lips.y)
-                        let d = u * (rise + across)
-                        let at = d < rise ? NSPoint(x: base.x, y: base.y + d)
-                            : NSPoint(x: bend.x + (lips.x - bend.x) * (d - rise) / across,
-                                      y: bend.y + (lips.y - bend.y) * (d - rise) / across)
-                        let r: CGFloat = 0.85
-                        NSColor.systemGreen.blended(withFraction: 0.25, of: .black)?.setFill()
-                        NSBezierPath(ovalIn: NSRect(x: at.x - r, y: at.y - r, width: r * 2, height: r * 2)).fill()
+                        NSColor.systemGreen.blended(withFraction: 0.3, of: .black)?.setFill()
+                        for i in 0..<3 {
+                            let u = (t + CGFloat(i) / 3).truncatingRemainder(dividingBy: 1)
+                            let d = u * (rise + across)
+                            let at = d < rise ? NSPoint(x: base.x, y: base.y + d)
+                                : NSPoint(x: bend.x + (lips.x - bend.x) * (d - rise) / across,
+                                          y: bend.y + (lips.y - bend.y) * (d - rise) / across)
+                            let r: CGFloat = 0.75
+                            NSBezierPath(ovalIn: NSRect(x: at.x - r, y: at.y - r, width: r * 2, height: r * 2)).fill()
+                        }
                     }
                 }
                 if stuffed, let b = burp, b > 0.25, b < 0.95 {

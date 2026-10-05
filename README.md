@@ -47,15 +47,19 @@ so it stays visible.
 | Low (≤20%) | ![low](screenshots/menubar-low.png) |
 | Charging | ![charging](screenshots/menubar-charging.png) |
 | Plugged in, not charging | ![full](screenshots/menubar-full.png) |
+| Worn battery (health 80% or less) | ![worn](screenshots/menubar-worn.png) |
 | High Power mode | ![high power](screenshots/menubar-high-power.png) |
 | Low Power mode | ![low power](screenshots/menubar-low-power.png) |
 
 - **On battery** — time to empty; the fill turns **red** at ≤20%.
 - **Charging** — time to full. With the face on, the fill turns green and Volta
-  drinks through a straw that comes up from below, a bead of charge running up
-  it every couple of seconds; with the face off, a **bolt** cuts through the glyph.
+  drinks through a straw that comes up from below: bubbles of charge run up it
+  into his mouth, and his charge ripples and bubbles as it fills; with the face off, a **bolt** cuts through the glyph.
 - **Plugged in, not charging** (full, or macOS holding the charge at a limit) —
   with the face on, Volta is full: eyes contentedly closed, glowing yellow.
+- **Battery health** — with the face on, Volta ages with the battery: from
+  100% health down to 80% his wrinkles (forehead, crow's feet, laugh lines)
+  slowly deepen, and at 80% or less he is a grandpa with bushy brows.
 - **High Power mode** — **blue** fill, including while charging.
 - **Low Power mode** — **yellow** fill.
 

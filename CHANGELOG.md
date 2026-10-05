@@ -8,6 +8,13 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.4.0] - 2026-10-05
+
+- While charging, bubbles run up Volta's straw into his mouth and his charge ripples and bubbles as it fills
+- Volta's straw no longer has an outline
+- feat: Volta ages with the battery: wrinkles deepen as health falls from 100% to 80%, and from 80% down he is a grandpa
+- Health shows in the menu again on Macs whose battery no longer reports the old capacity keys
+
 ## [1.3.0] - 2026-10-05
 
 - New app icon: Volta as he looks in the menu bar, a horizontal battery with round eyes and a smile
