@@ -312,10 +312,10 @@ final class App: NSObject, NSApplicationDelegate {
         let hasTemp = io.temperatureCentiC != nil
         SettingsMenu.addFooter(to: menu, appName: "Battery Time", items: { sub in
             sub.addItem(NSMenuItem(title: "Menu bar shows…", action: nil, keyEquivalent: ""))
-            self.addToggle(sub, title: "Battery icon", on: DisplayPrefs.showIcon, action: #selector(self.toggleIcon))
-            self.addToggle(sub, title: "Battery face", on: DisplayPrefs.showFace, action: #selector(self.toggleFace))
-            self.addToggle(sub, title: "Percentage", on: DisplayPrefs.showPct, action: #selector(self.togglePct))
-            self.addToggle(sub, title: "Time remaining", on: DisplayPrefs.showTime, action: #selector(self.toggleTime))
+            self.addToggle(sub, title: "Battery icon", on: DisplayPrefs.showIcon) { DisplayPrefs.showIcon = $0 }
+            self.addToggle(sub, title: "Battery face", on: DisplayPrefs.showFace) { DisplayPrefs.showFace = $0 }
+            self.addToggle(sub, title: "Percentage", on: DisplayPrefs.showPct) { DisplayPrefs.showPct = $0 }
+            self.addToggle(sub, title: "Time remaining", on: DisplayPrefs.showTime) { DisplayPrefs.showTime = $0 }
             if hasTemp {
                 sub.addItem(.separator())
                 let toC = DisplayPrefs.tempUnit == "C"
@@ -335,11 +335,13 @@ final class App: NSObject, NSApplicationDelegate {
         menu.addItem(item)
     }
 
-    private func addToggle(_ menu: NSMenu, title: String, on: Bool, action: Selector) {
-        let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
-        item.target = self
-        item.state = on ? .on : .off
-        menu.addItem(item)
+    /// A "Menu bar shows…" checkbox. Ticking it keeps the menu open and
+    /// redraws the menu-bar item straight away.
+    private func addToggle(_ menu: NSMenu, title: String, on: Bool, set: @escaping (Bool) -> Void) {
+        menu.addItem(ToggleMenuItem.make(title: title, isOn: on) { [weak self] on in
+            set(on)
+            self?.rerender()
+        })
     }
 
     // MARK: Menu actions
@@ -355,10 +357,6 @@ final class App: NSObject, NSApplicationDelegate {
         poll()
     }
 
-    @objc private func toggleIcon() { DisplayPrefs.showIcon.toggle(); rerender() }
-    @objc private func toggleFace() { DisplayPrefs.showFace.toggle(); rerender() }
-    @objc private func togglePct() { DisplayPrefs.showPct.toggle(); rerender() }
-    @objc private func toggleTime() { DisplayPrefs.showTime.toggle(); rerender() }
 
     private func rerender() { if let s = latest { render(s) } }
 
