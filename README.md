@@ -2,7 +2,7 @@
 
 <p align="center"><img src="docs/mascot.png" width="160" alt="Battery Time mascot, from Menumon"></p>
 
-<p align="center"><img src="docs/animation.png" alt="Volta blinking while his charge sloshes, sipping through his straw while charging, and burping when full"></p>
+<p align="center"><img src="docs/animation.png" alt="Volta blinking while his charge sloshes, drinking from a cup through a bendy straw while charging, and burping when full"></p>
 
 **Version 1.5.0** · [Changelog](https://github.com/nicholaspsmith/battery-time-menubar/releases)
 
@@ -53,8 +53,9 @@ so it stays visible.
 
 - **On battery** — time to empty; the fill turns **red** at ≤20%.
 - **Charging** — time to full. With the face on, the fill turns green and Volta
-  drinks through a straw that comes up from below: bubbles of charge run up it
-  into his mouth, and his charge ripples and bubbles as it fills; with the face off, a **bolt** cuts through the glyph.
+  drinks through a red bendy straw from a big cup in front of him: the charge
+  climbs the straw, stays while he gulps and his charge ripples and bubbles,
+  then drains back for the next sip; with the face off, a **bolt** cuts through the glyph.
 - **Plugged in, not charging** (full, or macOS holding the charge at a limit) —
   with the face on, Volta is full: eyes contentedly closed, glowing yellow.
 - **Battery health** — with the face on, Volta ages with the battery: from
