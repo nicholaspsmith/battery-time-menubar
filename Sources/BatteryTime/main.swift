@@ -51,7 +51,7 @@ final class App: NSObject, NSApplicationDelegate {
         self?.minuteT = nil
         self?.rerender()
     })
-    private static let sipPeriod: TimeInterval = 2.4
+    private static let sipPeriod = BatteryGlyph.sipPeriod
     private var sipTimer: Timer?
     private var sipStarted = Date()
     private var latest: Snapshot?
@@ -363,8 +363,8 @@ final class App: NSObject, NSApplicationDelegate {
     private func rerender() { if let s = latest { render(s) } }
 
     /// The sip loop runs only while there is a straw to sip through, and not
-    /// at all under Reduce Motion. A dozen frames a second is plenty for a
-    /// bead of charge sliding down a straw.
+    /// at all under Reduce Motion. A dozen frames a second is plenty for
+    /// charge climbing a straw.
     private func updateSipLoop(_ drinking: Bool) {
         let wanted = drinking && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         if wanted, sipTimer == nil {
