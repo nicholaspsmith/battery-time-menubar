@@ -8,6 +8,10 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.6.1] - 2026-10-05
+
+- New app icon: Volta as he looks in the menu bar
+
 ## [1.6.0] - 2026-10-05
 
 - While charging, Volta drinks through a red bendy straw from a big cup in front of him: the charge climbs the straw, stays full for a few seconds while he gulps, then drains back for the next sip
