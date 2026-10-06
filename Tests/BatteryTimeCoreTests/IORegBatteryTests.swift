@@ -45,4 +45,18 @@ final class IORegBatteryTests: XCTestCase {
         let b = parseIORegBattery(fixture)
         XCTAssertEqual(b.instantAmperageRaw, "18446744073709550000")
     }
+    // Newer macOS has no AppleRaw capacity keys; BatteryData carries them.
+    func testBatteryDataCapacities() {
+        let raw = """
+          | {
+            "CycleCount" = 73
+            "BatteryData" = {"FullChargeCapacity"=8464,"NominalChargeCapacity"=8708,"RemainingCapacity"=6675,"DesignCapacity"=8579,"TrueRemainingCapacity"=0}
+          | }
+        """
+        let b = parseIORegBattery(raw)
+        XCTAssertEqual(b.designCapacity, 8579)
+        XCTAssertEqual(b.rawMaxCapacity, 8708)
+        XCTAssertEqual(b.rawCurrentCapacity, 6675)
+        XCTAssertEqual(healthPercent(rawMax: b.rawMaxCapacity, design: b.designCapacity), 100)
+    }
 }
