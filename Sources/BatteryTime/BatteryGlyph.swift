@@ -481,7 +481,7 @@ public enum BatteryGlyph {
         // Only the top of a big cup shows: it rises from below the bar, so
         // its rim is all you see of it.
         let cupW: CGFloat = bodyH * 0.95, cupH: CGFloat = bodyH * 1.1
-        let cupX = mouth.x + bodyW * 0.235, cupY: CGFloat = -bodyH * 0.62
+        let cupX = mouth.x + bodyW * 0.235, cupY: CGFloat = -bodyH * 0.78
         let taper = cupW * 0.1
         let glass = CGMutablePath()
         glass.move(to: CGPoint(x: cupX - cupW / 2 + taper, y: cupY))
