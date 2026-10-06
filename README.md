@@ -1,6 +1,6 @@
 # battery-time-menubar
 
-<p align="center"><img src="docs/mascot.png" width="160" alt="Battery Time mascot, from Menumon"></p>
+<p align="center"><img src="docs/mascot.png" width="160" alt="Volta, Battery Time's menu-bar character, on its app icon"></p>
 
 <p align="center"><img src="docs/animation.png" alt="Volta blinking while his charge sloshes, drinking from a cup through a bendy straw while charging, and burping when full"></p>
 
