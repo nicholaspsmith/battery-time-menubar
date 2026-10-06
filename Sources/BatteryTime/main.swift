@@ -280,14 +280,6 @@ final class App: NSObject, NSApplicationDelegate {
         if let extras = extrasLine(snap), !extras.isEmpty {
             menu.addItem(NSMenuItem(title: extras, action: nil, keyEquivalent: ""))
         }
-        // temp toggle
-        if io.temperatureCentiC != nil {
-            let toC = DisplayPrefs.tempUnit == "C"
-            let item = NSMenuItem(title: toC ? "Switch to °F" : "Switch to °C",
-                                  action: #selector(toggleTempUnit), keyEquivalent: "")
-            item.target = self
-            menu.addItem(item)
-        }
 
         // --- 24h usage ---
         if let usage = snap.usage, let lines = usageLines(usage) {
@@ -310,30 +302,29 @@ final class App: NSObject, NSApplicationDelegate {
             menu.addItem(item)
         }
 
-        // --- Menu bar shows… (display toggles) ---
-        menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Menu bar shows…", action: nil, keyEquivalent: ""))
-        addToggle(menu, title: "Battery icon", on: DisplayPrefs.showIcon, action: #selector(toggleIcon))
-        addToggle(menu, title: "Battery face", on: DisplayPrefs.showFace, action: #selector(toggleFace))
-        addToggle(menu, title: "Percentage", on: DisplayPrefs.showPct, action: #selector(togglePct))
-        addToggle(menu, title: "Time remaining", on: DisplayPrefs.showTime, action: #selector(toggleTime))
-
-        // --- Start at Login ---
-        menu.addItem(.separator())
-        let login = NSMenuItem(title: "Start at Login", action: #selector(toggleLogin), keyEquivalent: "")
-        login.target = self
-        login.state = LoginItem.isEnabled ? .on : .off
-        menu.addItem(login)
-
         // --- Open Battery Settings ---
+        menu.addItem(.separator())
         let settings = NSMenuItem(title: "Open Battery Settings…", action: #selector(openSettings), keyEquivalent: "")
         settings.target = self
         menu.addItem(settings)
 
-        // --- Quit (no target -> standard responder chain) ---
-        menu.addItem(.separator())
-        menu.addItem(AppVersion.menuItem())
-        menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        // --- Settings ▸ (display toggles, temperature unit) + Quit ---
+        let hasTemp = io.temperatureCentiC != nil
+        SettingsMenu.addFooter(to: menu, appName: "Battery Time", items: { sub in
+            sub.addItem(NSMenuItem(title: "Menu bar shows…", action: nil, keyEquivalent: ""))
+            self.addToggle(sub, title: "Battery icon", on: DisplayPrefs.showIcon, action: #selector(self.toggleIcon))
+            self.addToggle(sub, title: "Battery face", on: DisplayPrefs.showFace, action: #selector(self.toggleFace))
+            self.addToggle(sub, title: "Percentage", on: DisplayPrefs.showPct, action: #selector(self.togglePct))
+            self.addToggle(sub, title: "Time remaining", on: DisplayPrefs.showTime, action: #selector(self.toggleTime))
+            if hasTemp {
+                sub.addItem(.separator())
+                let toC = DisplayPrefs.tempUnit == "C"
+                let item = NSMenuItem(title: toC ? "Switch to °F" : "Switch to °C",
+                                      action: #selector(self.toggleTempUnit), keyEquivalent: "")
+                item.target = self
+                sub.addItem(item)
+            }
+        })
     }
 
     private func addModeItem(_ menu: NSMenu, value: Int, label: String, current: Int?, src: String) {
@@ -386,8 +377,6 @@ final class App: NSObject, NSApplicationDelegate {
             sipTimer = nil
         }
     }
-
-    @objc private func toggleLogin() { LoginItem.toggle() }
 
     @objc private func openSettings() {
         _ = Shell.run(kOpen, [kSettingsURL])
