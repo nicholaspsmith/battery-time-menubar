@@ -8,6 +8,11 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.5.0] - 2026-10-05
+
+- feat: a Settings submenu holds Menu bar shows… (icon, face, percentage, time remaining) and the °C/°F switch, along with Start at Login and the version
+- Quit now reads "Quit Battery Time"
+
 ## [1.4.0] - 2026-10-05
 
 - While charging, bubbles run up Volta's straw into his mouth and his charge ripples and bubbles as it fills
