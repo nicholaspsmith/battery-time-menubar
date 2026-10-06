@@ -169,8 +169,11 @@ public enum BatteryGlyph {
                 inner.addClip(); liquid.fill()
                 NSGraphicsContext.current?.restoreGraphicsState()
             } else if let t = sip, greenFill, fillRect.width > 0 {
-                // Drinking: the charge is liquid coming in. Its edge ripples and
-                // bubbles rise through it, three times a sip.
+                // Drinking: the charge is liquid coming in. While the straw is
+                // full its edge ripples and bubbles rise through it; as the
+                // straw drains they fade and the edge settles flat, and they
+                // come back as the next sip climbs.
+                let stir = strawFill(t)
                 let inner = NSBezierPath(roundedRect: NSRect(x: bodyRect.minX + fillInset, y: fillRect.minY, width: innerW, height: fillRect.height),
                                          xRadius: 1.3 * k, yRadius: 1.3 * k)
                 let liquid = NSBezierPath()
@@ -178,7 +181,7 @@ public enum BatteryGlyph {
                 let steps = 8
                 for i in 0...steps {
                     let f = CGFloat(i) / CGFloat(steps)
-                    let wave = fillRect.width < innerW ? 0.7 * sin(2 * .pi * (f * 1.2 - t * 6)) : 0
+                    let wave = fillRect.width < innerW ? 0.7 * stir * sin(2 * .pi * (f * 1.2 - t * 6)) : 0
                     liquid.line(to: NSPoint(x: fillRect.maxX + wave, y: fillRect.minY + f * fillRect.height))
                 }
                 liquid.line(to: NSPoint(x: fillRect.minX - 1, y: fillRect.maxY + 1))
@@ -187,7 +190,7 @@ public enum BatteryGlyph {
                 NSGraphicsContext.current?.saveGraphicsState()
                 inner.addClip(); liquid.addClip()
                 liquid.fill()
-                NSColor.white.withAlphaComponent(0.6).setFill()
+                NSColor.white.withAlphaComponent(0.6 * stir).setFill()
                 let bubbles: [(x: CGFloat, phase: CGFloat, r: CGFloat)] = [(0.12, 0.0, 0.55), (0.3, 0.55, 0.75), (0.68, 0.25, 0.6), (0.86, 0.75, 0.7)]
                 for b in bubbles {
                     let u = (t * 3 + b.phase).truncatingRemainder(dividingBy: 1)
