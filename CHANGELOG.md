@@ -8,6 +8,10 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.7.0] - 2026-10-07
+
+- No user-visible changes.
+
 ## [1.6.4] - 2026-10-06
 
 - Ticking a checkbox in the menu no longer closes it: Settings ▸ Menu bar shows… (Battery icon, Battery face, Percentage, Time remaining) and Start at Login stay open, and the menu-bar item redraws as you tick
