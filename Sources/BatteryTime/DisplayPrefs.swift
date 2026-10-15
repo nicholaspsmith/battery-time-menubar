@@ -17,6 +17,7 @@ enum DisplayPrefs {
     private static let kShowTime = "showTime"
     private static let kTempUnit = "tempUnit"
     private static let kShowFace = "showFace"
+    private static let kAnimateFace = "animateFace"
 
     /// Reads a bool flag that defaults to `fallback` when never set.
     private static func boolOr(_ key: String, _ fallback: Bool) -> Bool {
@@ -31,6 +32,12 @@ enum DisplayPrefs {
     static var showFace: Bool {
         get { boolOr(kShowFace, true) }
         set { defaults.set(newValue, forKey: kShowFace) }
+    }
+    /// Volta's idle (glances, breaths, blinks, yawns). Off, he moves only for
+    /// the sip loop and the twice-a-minute cue.
+    static var animateFace: Bool {
+        get { boolOr(kAnimateFace, true) }
+        set { defaults.set(newValue, forKey: kAnimateFace) }
     }
     static var showPct: Bool {
         get { boolOr(kShowPct, false) }
