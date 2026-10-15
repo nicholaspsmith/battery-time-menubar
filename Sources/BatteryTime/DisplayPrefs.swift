@@ -33,7 +33,7 @@ enum DisplayPrefs {
         get { boolOr(kShowFace, true) }
         set { defaults.set(newValue, forKey: kShowFace) }
     }
-    /// Volta's idle (glances, breaths, blinks, yawns). Off, he moves only for
+    /// Volta's idle (glances, blinks, sighs, yawns). Off, he moves only for
     /// the sip loop and the twice-a-minute cue.
     static var animateFace: Bool {
         get { boolOr(kAnimateFace, true) }

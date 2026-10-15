@@ -45,7 +45,8 @@ it before starting. This plan argues from it.
    pose must not replay missed gestures, and gestures shouldn't burst on wake.
    Pinned by `testWakingFromALongPauseReplaysNothing` (Task 1).
 2. **Rapid plug and unplug (mood flapping).** Every field stays in range and
-   ticks stay between 1/60 s and 1/4 s. Pinned by
+   ticks stay between 1/60 s and 60 s (1/4 s before the gestures-only
+   amendment). Pinned by
    `testMoodFlappingStaysInRange` (Task 1).
 3. **Charge crossing 20% on battery.** The lids ease down over 0.3 s instead of
    snapping. Pinned by `testTiredLidsEaseIn` (Task 1).

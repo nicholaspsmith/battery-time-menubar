@@ -12,7 +12,7 @@ Date: 2026-10-15. Status: approved; amended 2026-10-15 (gestures only).
 
 Give Volta (Battery Time's menu-bar mascot) a face like BMO's from Adventure
 Time, so it reads as a digital face, and keep him moving all the time like
-parity's Polly. He glances back and forth, breathes, blinks and yawns. Every
+parity's Polly. He glances back and forth, blinks, sighs and yawns. Every
 state idles in its own way: on battery, charging and full.
 
 Agreed with Nick:
@@ -143,20 +143,25 @@ ends, at a uniformly random interval from the ranges below.
 - **Easing:** smoothstep on every ramp.
 
 **`nextTick`:**
-- 1/10 s while any ramp is in progress (a glance or peek easing, a blink, a
-  yawn, a stir, a mood or cue ease);
+- 1/10 s while anything moves (a glance or peek easing, a blink, a yawn opening
+  or closing, a stir's wake, glance or doze-off, a mood or cue ease);
 - 1/4 s while only a sigh moves;
-- otherwise one frame into the next gesture (a gesture's first instant looks
-  like rest), and never more than 60 s.
+- through a still stretch, one frame into the next movement, because its first
+  instant looks like the frame before. The still stretches are rest between
+  gestures, a glance's hold, a yawn's 1.2 s hold, a sigh's hold, a peek's held
+  gaze, a stir's held glance and yawn, and a stir's settle (which looks like
+  rest, so it waits for the next gesture);
+- never more than 60 s.
 
 ## 3. Wiring in the app
 
 `main.swift`:
 
 - **One animation clock** replaces `sipTimer`. It's a one-shot `Timer` that each
-  tick re-arms itself for `min(driver.nextTick, sip need)` with a 10%
-  tolerance. The sip need is 1/12 s while drinking, so the sip loop keeps its
-  current timing. Each tick redraws.
+  tick re-arms itself for `min(driver.nextTick, sip need)`, with at most 10 ms
+  of tolerance (`timerTolerance`). macOS fires a timer at the far end of its
+  tolerance, and a blink is over in 0.18 s. The sip need is 1/12 s while
+  drinking, so the sip loop keeps its current timing. Each tick redraws.
 - **When the clock runs:** the icon and face are both shown, Reduce Motion is
   off, the display is awake and the session is active. It stops on
   `NSWorkspace.screensDidSleepNotification` and
@@ -175,15 +180,27 @@ ends, at a uniformly random interval from the ranges below.
   (key `animateFace`, default true). Off means `idle` is `.still`, and the clock
   runs only for the sip loop, exactly as in 1.10.0. The cue is unaffected.
   Reduce Motion stills everything, as today.
+- **The cue** (`minuteCueMayPlay`) plays only while the face and icon show,
+  he isn't charging, the display is awake and the session is active.
 - **Seed:** a random seed at launch.
 
 ## 4. Energy budget
 
-On battery, the idle adds about 0.5% of one core. Each redraw costs macOS
-about 5 ms whatever the image, so that means about one redraw a second. The
-driver averages 1.13 updates/s on battery (measured over 5 seeds × 1 h). On
-the device that measured as about 0.7% of a core added (idle on 2.8% vs off
-2.1%, the rest being the app's existing polling), which was reported to Nick.
+On battery, the idle aims to add about 0.5% of one core. Each redraw costs
+macOS about 5 ms whatever the image, so that means about one redraw a second.
+The driver averages, over 5 seeds × 1 h:
+
+| Mood | Redraws/s |
+|---|---|
+| Awake | 0.97 |
+| Tired | 1.10 |
+| Sleepy | 1.03 |
+| Drinking (the 12 fps sip loop dominates while charging) | 0.91 |
+
+At least 99% of blinks are drawn even when every tick fires 10 ms late.
+Measured on the device on battery (60 s windows × 2), the idle adds about
+0.67% of a core: on 3.1% vs off 2.4%, the rest being the app's existing 5 s
+polling. That was reported to Nick, who accepted it.
 
 ## 5. Testing
 
@@ -192,13 +209,27 @@ the device that measured as about 0.7% of a core added (idle on 2.8% vs off
   - The pose is the mood's resting pose at start, and the new mood's resting
     pose 0.3 s after a mood change (barring a gesture).
   - Every glance returns `gaze` to 0.
-  - While awake, every 6 s window contains a blink.
+  - While awake, blinks come 5–9 s apart, plus however long a yawn held one
+    back (up to 2.6 s).
   - A yawn never overlaps a nonzero `gaze` or `blink`.
   - Tired yawns come more often than untired ones over a long run.
   - Sleepy has `doze` at 1 for most of a long run.
   - The cue drives `gaze` to 0 within 0.25 s and starts no gesture.
-  - `nextTick` is 1/15 s mid-ramp, 1/4 s at rest, and never past the next
-    gesture.
+  - `nextTick` is 1/10 s mid-gesture. At rest it lands one frame into the
+    next gesture.
+  - Tick-driven drawing never misses a blink or glance.
+  - At most 3% of tick-driven frames repeat the frame before.
+  - On battery he draws at most 1.2 times a second.
+  - A sigh only moves `breath`, and only for its 3 s.
+- **`VoltaMotionTests`:**
+  - mood mapping;
+  - when he may move;
+  - the clock's delay;
+  - the 10 ms timer tolerance;
+  - when the minute cue may play.
+- **`GlyphFaceTests`:** eye and mouth geometry, gaze and sigh lift, blink and
+  yawn shutting the eyes, heavy lids staying down through them, peek and stir,
+  and the casing staying put.
 - **The existing age and core tests** stay green.
 - **Visual:**
   - A sheet of every state × idle pose (gaze ±1, blink, yawn, doze, peek,
@@ -207,12 +238,14 @@ the device that measured as about 0.7% of a core added (idle on 2.8% vs off
     before anything ships.
 - **Energy:**
   - Time `BatteryGlyph.image` over many frames and multiply by the frame rates.
-  - Sample the running app's CPU (`top -pid`) with the idle on and off, in
-    whatever power state the Mac is in, and report which states were measured.
+  - Sample the running app's CPU (cumulative `ps -o cputime` over 60 s
+    windows) with the idle on and off, in whatever power state the Mac is in,
+    and report which states were measured.
 
 ## 6. Release
 
-- Branch `volta-idle`, version **1.11.0**.
+- Branch `volta-idle`, released as **1.13.0** (parity shipped 1.11.0 and 1.12.0,
+  StatusItemKit updates, while it was in progress).
 - CHANGELOG entry.
 - README: the face, the idle per state, the Animate Volta setting, and Reduce
   Motion.
