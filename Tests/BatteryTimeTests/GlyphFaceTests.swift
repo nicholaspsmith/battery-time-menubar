@@ -44,14 +44,15 @@ final class GlyphFaceTests: XCTestCase {
         XCTAssertEqual(ink(volta(idle: .init(gaze: -1)), in: interior(img)).cx - still, -2.0, accuracy: 0.15)
     }
 
-    func testBreathLiftsTheFace() {
+    func testASighLiftsTheFace() {
         let img = volta()
         XCTAssertEqual(ink(volta(idle: .init(breath: 1)), in: interior(img)).cy - ink(img, in: interior(img)).cy,
-                       0.25, accuracy: 0.06)
+                       0.6, accuracy: 0.06)
         let full = volta(plugged: true)
-        let band = NSRect(x: cx - 8.5, y: cy(full) - 4.0, width: 17, height: 7.6)   // clear of the glow
-        XCTAssertEqual(ink(volta(plugged: true, idle: .init(breath: 1)), in: band).cy - ink(full, in: band).cy,
-                       0.35, accuracy: 0.06)
+        let eyes = NSRect(x: cx - 8.5, y: cy(full), width: 17, height: 4.4)   // the dots' tops, clear of the glow
+        XCTAssertEqual(ink(volta(plugged: true, idle: .init(breath: 1, doze: 0)), in: eyes, scale: 8).maxY
+                       - ink(volta(plugged: true, idle: .init(doze: 0)), in: eyes, scale: 8).maxY,
+                       0.8, accuracy: 0.15)   // deeper when full
     }
 
     func testBlinkAndYawnShutTheEyes() {

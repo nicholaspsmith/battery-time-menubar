@@ -68,18 +68,18 @@ final class IdleDriverTests: XCTestCase {
     func testEveryGlanceComesBackToCentre() {
         var d = IdleDriver(seed: 11, mood: .awake(tired: false), at: 0)
         let glances = episodes(&d, from: 0, to: 300) { $0.gaze }
-        XCTAssertGreaterThan(glances.count, 20)
+        XCTAssertGreaterThan(glances.count, 12)
         for (start, end) in glances { XCTAssertLessThanOrEqual(end - start, 3.0 + 0.02) }
     }
 
-    func testBlinksComeEveryThreeToSixSecondsUnlessAYawnHoldsThemBack() {
+    func testBlinksComeEveryFiveToNineSecondsUnlessAYawnHoldsThemBack() {
         var d = IdleDriver(seed: 12, mood: .awake(tired: false), at: 0)
         let blinks = episodes(&d, from: 0, to: 300, dt: 0.005) { $0.blink }
-        XCTAssertGreaterThan(blinks.count, 40)
+        XCTAssertGreaterThan(blinks.count, 25)
         for (a, b) in zip(blinks, blinks.dropFirst()) {
             let gap = b.0 - a.1
-            XCTAssertGreaterThanOrEqual(gap, 2.9)
-            XCTAssertLessThanOrEqual(gap, 6.0 + 2.6 + 0.1)   // a yawn (2.6 s) can hold a blink back
+            XCTAssertGreaterThanOrEqual(gap, 4.9)
+            XCTAssertLessThanOrEqual(gap, 9.0 + 2.6 + 0.1)   // a yawn (2.6 s) can hold a blink back
         }
     }
 
@@ -142,10 +142,36 @@ final class IdleDriverTests: XCTestCase {
         XCTAssertFalse(episodes(&d, from: t + 20, to: t + 30) { $0.blink }.isEmpty, "gestures resume")
     }
 
-    func testNextTickRestsBetweenGestures() {
+    func testNextTickSleepsUntilTheNextGesture() {
         var d = IdleDriver(seed: 18, mood: .awake(tired: false), at: 0)
-        _ = d.pose(at: 0.5)
-        XCTAssertEqual(d.nextTick(after: 0.5), IdleDriver.restingTick)   // first blink is 3 s or more away
+        XCTAssertEqual(d.pose(at: 0.5), .resting(.awake(tired: false)), "nothing moves between gestures")
+        let n = d.nextTick(after: 0.5)
+        XCTAssertGreaterThanOrEqual(n, 4.5)   // the first blink is 5 s or more away
+        let p = d.pose(at: 0.5 + n + 0.05)
+        XCTAssertTrue(p.blink > 0 || p.gaze != 0 || p.breath > 0, "the tick lands on the gesture")
+    }
+
+    func testBreathOnlyMovesDuringASigh() {
+        var d = IdleDriver(seed: 23, mood: .awake(tired: false), at: 0)
+        let sighs = episodes(&d, from: 0, to: 600, dt: 0.02) { $0.breath }
+        XCTAssertGreaterThanOrEqual(sighs.count, 6)
+        for (start, end) in sighs { XCTAssertLessThanOrEqual(end - start, 3.0 + 0.04) }
+    }
+
+    func testOnBatteryHeDrawsAboutOnceASecond() {
+        var d = IdleDriver(seed: 24, mood: .awake(tired: false), at: 0)
+        var t = 0.0, ticks = 0
+        while t < 3600 { _ = d.pose(at: t); t += d.nextTick(after: t); ticks += 1 }
+        XCTAssertLessThanOrEqual(Double(ticks) / 3600, 1.2)
+    }
+
+    func testARestingTickLandsOneFrameIntoTheNextGesture() {
+        var d = IdleDriver(seed: 25, mood: .awake(tired: false), at: 0)
+        let n = d.nextTick(after: 0.5)
+        var probe = d
+        var start = 0.5
+        while probe.pose(at: start).blink == 0 && probe.pose(at: start).gaze == 0 && probe.pose(at: start).breath == 0 { start += 0.001 }
+        XCTAssertEqual(0.5 + n, start - 0.001 + IdleDriver.movingTick, accuracy: 0.003, "first visible frame, not the gesture's still first instant")
     }
 
     func testNextTickHurriesMidGestureAndThroughAMoodChange() {
@@ -160,21 +186,21 @@ final class IdleDriverTests: XCTestCase {
     func testTickDrivenDrawingNeverMissesAGesture() {
         var dense = IdleDriver(seed: 20, mood: .awake(tired: false), at: 0)
         var ticked = IdleDriver(seed: 20, mood: .awake(tired: false), at: 0)
-        let denseBlinks = episodes(&dense, from: 0, to: 600, dt: 0.005) { $0.blink }.count
+        let denseBlinks = episodes(&dense, from: 0, to: 600, dt: 0.005, merge: 3.5) { $0.blink }.count
         var dense2 = IdleDriver(seed: 20, mood: .awake(tired: false), at: 0)
-        let denseGlances = episodes(&dense2, from: 0, to: 600, dt: 0.005) { $0.gaze }.count
-        // Merge across gaps up to 0.3 s: a held glance is drawn at 4 fps (0.25 s apart).
+        let denseGlances = episodes(&dense2, from: 0, to: 600, dt: 0.005, merge: 3.5) { $0.gaze }.count
+        // Merge across gaps up to 3.5 s: a held glance (up to 2.5 s) is drawn once.
         var blinks: [(Double, Double)] = [], glances: [(Double, Double)] = []
         var t = 0.0
         while t <= 600 {
             let p = ticked.pose(at: t)
             for (value, list) in [(p.blink, 0), (p.gaze, 1)] where abs(value) > 1e-12 {
-                if list == 0 { if let l = blinks.last, t - l.1 <= 0.3 { blinks[blinks.count - 1].1 = t } else { blinks.append((t, t)) } }
-                else { if let l = glances.last, t - l.1 <= 0.3 { glances[glances.count - 1].1 = t } else { glances.append((t, t)) } }
+                if list == 0 { if let l = blinks.last, t - l.1 <= 3.5 { blinks[blinks.count - 1].1 = t } else { blinks.append((t, t)) } }
+                else { if let l = glances.last, t - l.1 <= 3.5 { glances[glances.count - 1].1 = t } else { glances.append((t, t)) } }
             }
             let step = ticked.nextTick(after: t)
             XCTAssertGreaterThanOrEqual(step, IdleDriver.minimumTick)
-            XCTAssertLessThanOrEqual(step, IdleDriver.restingTick)
+            XCTAssertLessThanOrEqual(step, IdleDriver.longestTick)
             t += step
         }
         XCTAssertEqual(blinks.count, denseBlinks)
@@ -197,10 +223,10 @@ final class IdleDriverTests: XCTestCase {
         while t < 10 {
             if Int(t * 1000) % 100 == 0 { flip.toggle(); d.setMood(flip ? .drinking : .awake(tired: false), at: t) }
             let p = d.pose(at: t)
-            for v in [p.gaze, p.breath] { XCTAssertGreaterThanOrEqual(v, -1); XCTAssertLessThanOrEqual(v, 1) }
-            for v in [p.blink, p.yawn, p.doze, p.peek, p.tired] { XCTAssertGreaterThanOrEqual(v, 0); XCTAssertLessThanOrEqual(v, 1) }
+            XCTAssertGreaterThanOrEqual(p.gaze, -1); XCTAssertLessThanOrEqual(p.gaze, 1)
+            for v in [p.breath, p.blink, p.yawn, p.doze, p.peek, p.tired] { XCTAssertGreaterThanOrEqual(v, 0); XCTAssertLessThanOrEqual(v, 1) }
             let n = d.nextTick(after: t)
-            XCTAssertGreaterThanOrEqual(n, IdleDriver.minimumTick); XCTAssertLessThanOrEqual(n, IdleDriver.restingTick)
+            XCTAssertGreaterThanOrEqual(n, IdleDriver.minimumTick); XCTAssertLessThanOrEqual(n, IdleDriver.longestTick)
             t += 0.01
         }
     }

@@ -20,7 +20,7 @@ public enum IdleMood: Equatable {
 public struct IdlePose: Equatable {
     /// −1…1: his face turned left…right.
     public var gaze: Double
-    /// −1…1: the rise and fall of a breath.
+    /// 0…1: a sigh lifting his face.
     public var breath: Double
     /// 0…1: eyes open…shut.
     public var blink: Double
@@ -58,21 +58,25 @@ public struct IdlePose: Equatable {
     }
 }
 
-/// Volta's idle: glances, blinks, yawns, peeks, stirs and breaths on a
-/// seeded random timeline, so it varies but a test can replay it exactly.
-/// Time is any monotonic clock in seconds. Each gesture is scheduled when
-/// the previous one of its kind ends, at a random interval for its kind.
+/// Volta's idle: glances, blinks, yawns, sighs, peeks and stirs on a seeded
+/// random timeline, so it varies but a test can replay it exactly. Time is
+/// any monotonic clock in seconds. Each gesture is scheduled when the
+/// previous one of its kind ends, at a random interval for its kind. Between
+/// gestures nothing moves, so nothing needs drawing: every menu-bar redraw
+/// costs macOS ~5 ms of CPU, and on battery he should average about one.
 public struct IdleDriver {
-    /// Redraw intervals: while something moves, while he only breathes, and
-    /// the shortest the menu bar is ever asked for.
-    public static let movingTick: TimeInterval = 1.0 / 15
-    public static let restingTick: TimeInterval = 1.0 / 4
+    /// Redraw intervals: while something moves, while only a (slow) sigh
+    /// moves, the shortest the menu bar is ever asked for, and the longest
+    /// he waits before checking in.
+    public static let movingTick: TimeInterval = 1.0 / 10
+    public static let sighTick: TimeInterval = 1.0 / 4
     public static let minimumTick: TimeInterval = 1.0 / 60
+    public static let longestTick: TimeInterval = 60
 
     static let moodEase: TimeInterval = 0.3
     static let cueEase: TimeInterval = 0.2
 
-    enum Kind: CaseIterable { case glance, blink, yawn, peek, stir }
+    enum Kind: CaseIterable { case glance, blink, yawn, sigh, peek, stir }
 
     struct Gesture {
         let kind: Kind
@@ -91,7 +95,6 @@ public struct IdleDriver {
     private var mood: IdleMood
     private var next: [Kind: TimeInterval] = [:]
     private var active: [Gesture] = []
-    private var breathStart: TimeInterval
     private var cuePlaying = false
     private var cueChanged = -TimeInterval.infinity
     private var moodChanged = -TimeInterval.infinity
@@ -101,7 +104,6 @@ public struct IdleDriver {
     public init(seed: UInt64, mood: IdleMood, at t: TimeInterval) {
         rng = SplitMix64(seed: seed)
         self.mood = mood
-        breathStart = t
         last = t
         schedule(from: t)
     }
@@ -129,7 +131,6 @@ public struct IdleDriver {
     public mutating func pose(at t: TimeInterval) -> IdlePose {
         advance(to: t)
         var p = IdlePose.resting(mood)
-        p.breath = sin(2 * .pi * (t - breathStart) / (mood == .sleepy ? 6 : 4))
         for g in active where g.start <= t && t < g.end { apply(g, at: t - g.start, to: &p) }
         let c = cueMask(at: t)
         if c > 0 { p.gaze *= 1 - c; p.peek *= 1 - c; p.yawn *= 1 - c; p.blink *= 1 - c }
@@ -139,17 +140,22 @@ public struct IdleDriver {
     }
 
     /// Seconds from `t` until the pose next needs drawing: `movingTick` while
-    /// anything ramps, else `restingTick`, never past the next gesture's start.
+    /// anything ramps, `sighTick` while only a sigh moves, otherwise one frame
+    /// into the next gesture (its first instant looks like rest), at most
+    /// `longestTick`.
     public mutating func nextTick(after t: TimeInterval) -> TimeInterval {
         advance(to: t)
         if t - moodChanged < Self.moodEase || t - cueChanged < Self.cueEase { return Self.movingTick }
-        var wait = Self.restingTick
+        var wait = Self.longestTick
         for g in active where g.start <= t && t < g.end {
+            if g.kind == .sigh { wait = min(wait, Self.sighTick); continue }
             guard let still = stillUntil(g, at: t - g.start) else { return Self.movingTick }
             wait = min(wait, still - t)
         }
         if !cuePlaying {
-            for k in Self.kinds(for: mood) { if let n = next[k] { wait = min(wait, n - t) } }
+            for k in Self.kinds(for: mood) {
+                if let n = next[k] { wait = min(wait, n - t + (k == .sigh ? Self.sighTick : Self.movingTick)) }
+            }
         }
         return max(wait, Self.minimumTick)
     }
@@ -158,9 +164,9 @@ public struct IdleDriver {
 
     private static func kinds(for mood: IdleMood) -> [Kind] {
         switch mood {
-        case .awake: return [.glance, .blink, .yawn]
-        case .drinking: return [.peek]
-        case .sleepy: return [.stir]
+        case .awake: return [.glance, .blink, .yawn, .sigh]
+        case .drinking: return [.peek, .sigh]
+        case .sleepy: return [.stir, .sigh]
         }
     }
 
@@ -171,9 +177,15 @@ public struct IdleDriver {
 
     private mutating func interval(_ k: Kind) -> TimeInterval {
         switch k {
-        case .glance: return rng.uniform(6, 12)
-        case .blink: return rng.uniform(3, 6)
+        case .glance: return rng.uniform(10, 20)
+        case .blink: return rng.uniform(5, 9)
         case .yawn: return mood == .awake(tired: true) ? rng.uniform(45, 90) : rng.uniform(120, 240)
+        case .sigh:
+            switch mood {
+            case .awake: return rng.uniform(40, 70)
+            case .drinking: return rng.uniform(20, 40)
+            case .sleepy: return rng.uniform(15, 30)
+            }
         case .peek: return rng.uniform(10, 20)
         case .stir: return rng.uniform(40, 80)
         }
@@ -190,6 +202,8 @@ public struct IdleDriver {
             return Gesture(kind: k, start: s, length: double ? 0.43 : 0.18, side: 0, hold: 0, double: double)
         case .yawn:
             return Gesture(kind: k, start: s, length: 2.6, side: 0, hold: 0, double: false)
+        case .sigh:
+            return Gesture(kind: k, start: s, length: mood == .sleepy ? 4 : 3, side: 0, hold: 0, double: false)
         case .peek:
             return Gesture(kind: k, start: s, length: 1.6, side: rng.unit() < 0.5 ? -1 : 1, hold: 0, double: false)
         case .stir:
@@ -244,6 +258,8 @@ public struct IdleDriver {
             p.blink = max(Self.blink(u), g.double ? Self.blink(u - 0.25) : 0)
         case .yawn:
             p.yawn = Self.yawn(u)
+        case .sigh:
+            p.breath = Self.sigh(u, length: g.length)
         case .peek:
             // Eyes open over 0.15 s, a glance there and back over 1.3 s, closed over 0.15 s.
             p.peek = u < 0.15 ? Self.ease(u / 0.15) : u < 1.45 ? 1 : 1 - Self.ease((u - 1.45) / 0.15)
@@ -291,6 +307,15 @@ public struct IdleDriver {
         if u < 1.8 { return 1 }
         if u < 2.6 { return 1 - ease((u - 1.8) / 0.8) }
         return 0
+    }
+
+    /// One sigh: breathe in over 40% of it, hold 10%, breathe out over 50%.
+    static func sigh(_ u: TimeInterval, length: TimeInterval) -> Double {
+        let f = u / length
+        if f < 0 || f >= 1 { return 0 }
+        if f < 0.4 { return ease(f / 0.4) }
+        if f < 0.5 { return 1 }
+        return 1 - ease((f - 0.5) / 0.5)
     }
 
     /// Smoothstep, clamped to 0…1.

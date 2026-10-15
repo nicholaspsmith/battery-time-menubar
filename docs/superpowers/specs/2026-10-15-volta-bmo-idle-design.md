@@ -1,6 +1,12 @@
 # Volta: a BMO face that idles
 
-Date: 2026-10-15. Status: approved in conversation, awaiting spec review.
+Date: 2026-10-15. Status: approved; amended 2026-10-15 (gestures only).
+
+> **Amendment, 2026-10-15:** every status-item image update costs macOS about
+> 5 ms of CPU, whatever the image (measured), so a continuous 4 fps breath
+> can't meet the energy budget. Nick chose **gestures only**: there's no
+> continuous breath, an occasional slow sigh lifts the face instead, and
+> nothing is drawn between gestures. The numbers below are the amended ones.
 
 ## Goal
 
@@ -59,7 +65,7 @@ builds it alone. Its fields, all `CGFloat`:
 | Field | Range | Drawn as |
 |---|---|---|
 | `gaze` | −1…1 | Every face feature (eyes, mouth, aging lines) shifts 2pt per unit horizontally. |
-| `breath` | −1…1 | Every face feature shifts vertically by `breath × 0.25pt` (0.35pt when full). |
+| `breath` | 0…1 | A sigh. Every face feature rises by `breath × 0.6pt` (0.8pt when full). |
 | `blink` | 0…1 | Merges with the cue's blink (the larger wins): the dots squash, and become a line above 0.85. |
 | `yawn` | 0…1 | The mouth becomes an open oval 3.6 wide and up to 4.2 tall, eyes shut with it (blink at least `yawn`). On battery and when full only. |
 | `doze` | 0…1 | Full only. 1 is the ‿ ‿ eyes. Below 1 the eyes open to dots, squashed by `doze`, and switch to ‿ ‿ above 0.85. |
@@ -99,13 +105,14 @@ timeline exactly. Each gesture is scheduled when the previous one of its kind
 ends, at a uniformly random interval from the ranges below.
 
 **Awake** (on battery):
-- **Glance:** every 6–12 s, left or right at random. It eases over in 0.25 s,
+- **Glance:** every 10–20 s, left or right at random. It eases over in 0.25 s,
   holds for 1–2.5 s, then eases back in 0.25 s. Gaze reaches ±1.
-- **Blink:** every 3–6 s. It takes 0.18 s (close 0.06, hold 0.04, open 0.08).
+- **Blink:** every 5–9 s. It takes 0.18 s (close 0.06, hold 0.04, open 0.08).
   A quarter of blinks are doubled, the second 0.25 s after the first.
 - **Yawn:** every 120–240 s, or every 45–90 s when tired. It takes 2.6 s: open
   0.6, hold 1.2, close 0.8.
-- **Breath:** a sine with a 4 s period.
+- **Sigh:** every 40–70 s, 3 s long: breathe in over 40%, hold 10%, breathe
+  out over 50%.
 - **Tired** (`awake(tired: true)`, which the app sets at 20% charge and below):
   `tired` is 1, plus the faster yawns.
 
@@ -113,7 +120,7 @@ ends, at a uniformly random interval from the ranges below.
 - **Peek:** every 10–20 s. It takes 1.6 s: eyes open over 0.15 s, gaze to ±1
   and back over 1.3 s, eyes close over 0.15 s.
 - No blinks, since his eyes are already closed. No yawns.
-- **Breath:** 4 s.
+- **Sigh:** every 20–40 s, 3 s long.
 
 **Sleepy** (full):
 - **Resting pose:** `doze` 1.
@@ -122,7 +129,7 @@ ends, at a uniformly random interval from the ranges below.
   - a glance one way, 1.2 s;
   - a yawn, 2.6 s;
   - doze off (`doze` 0 → 1 over 0.8 s), then a 0.6 s settle.
-- **Breath:** 6 s.
+- **Sigh:** every 15–30 s, 4 s long (deeper).
 
 **Rules:**
 - A yawn never overlaps a glance or a blink. A gesture due during a yawn waits
@@ -136,10 +143,11 @@ ends, at a uniformly random interval from the ranges below.
 - **Easing:** smoothstep on every ramp.
 
 **`nextTick`:**
-- 1/15 s while any ramp is in progress (a glance or peek easing, a blink, a
+- 1/10 s while any ramp is in progress (a glance or peek easing, a blink, a
   yawn, a stir, a mood or cue ease);
-- otherwise 1/4 s, the breath-only rate;
-- never later than the next scheduled gesture start.
+- 1/4 s while only a sigh moves;
+- otherwise one frame into the next gesture (a gesture's first instant looks
+  like rest), and never more than 60 s.
 
 ## 3. Wiring in the app
 
@@ -171,10 +179,11 @@ ends, at a uniformly random interval from the ranges below.
 
 ## 4. Energy budget
 
-On battery, with the idle running, Battery Time averages under 0.5% of one core.
-The estimate: breathing runs at 4 fps most of the time, and gestures at 15 fps
-fill roughly a fifth of it. That averages about 6 redraws a second of an image
-that takes well under a millisecond.
+On battery, the idle adds about 0.5% of one core. Each redraw costs macOS
+about 5 ms whatever the image, so that means about one redraw a second. The
+driver averages 1.13 updates/s on battery (measured over 5 seeds × 1 h). On
+the device that measured as about 0.7% of a core added (idle on 2.8% vs off
+2.1%, the rest being the app's existing polling), which was reported to Nick.
 
 ## 5. Testing
 

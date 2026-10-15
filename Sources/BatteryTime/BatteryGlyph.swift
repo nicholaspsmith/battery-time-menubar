@@ -41,7 +41,7 @@ public enum BatteryGlyph {
     public struct Idle {
         /// −1…1: every face feature shifts 2pt per unit sideways.
         public var gaze: CGFloat
-        /// −1…1: every face feature rises 0.25pt per unit (0.35pt when full).
+        /// 0…1: a sigh lifts every face feature by up to 0.6pt (0.8pt when full).
         public var breath: CGFloat
         /// 0…1: the dots squash shut (merges with the minute cue's blink).
         public var blink: CGFloat
@@ -560,9 +560,9 @@ public enum BatteryGlyph {
                     }
                 }
 
-                // The idle turns his face (gaze) and lifts it as he breathes.
+                // The idle turns his face (gaze) and lifts it as he sighs.
                 // The casing's crack, band-aid and drips stay put.
-                let faceDX = idle.gaze * 2, faceDY = idle.breath * (stuffed ? 0.35 : 0.25)
+                let faceDX = idle.gaze * 2, faceDY = idle.breath * (stuffed ? 0.8 : 0.6)
                 if faceDX != 0 || faceDY != 0 {
                     let t = AffineTransform(translationByX: faceDX, byY: faceDY)
                     for p in fills + strokes { p.transform(using: t) }
