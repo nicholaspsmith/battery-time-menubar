@@ -431,15 +431,16 @@ public enum BatteryGlyph {
                 } else {
                     let h = eye * (1 - shut)
                     for ex in eyesShown {
-                        if shut == 0, lid > 0 {
-                            // a dot cut flat across the top
+                        if lid > 0 {
+                            // a dot cut flat across the top, squashed as he
+                            // blinks (never taller than the lid allows)
                             let r = eye / 2
                             let th = asin(max(-1, min(1, (r - lid * eye) / r))) * 180 / .pi
                             let e = NSBezierPath()
                             e.appendArc(withCenter: .zero, radius: r, startAngle: th, endAngle: 180 - th, clockwise: true)
                             e.close()
                             var t = AffineTransform(translationByX: ex, byY: eyeY + r)
-                            t.scale(x: eyeW / eye, y: 1)
+                            t.scale(x: eyeW / eye, y: max(0.23, 1 - shut))
                             e.transform(using: t)
                             fills.append(e)
                         } else {

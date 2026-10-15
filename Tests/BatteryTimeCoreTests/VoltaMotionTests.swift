@@ -36,4 +36,19 @@ final class VoltaMotionTests: XCTestCase {
         XCTAssertEqual(animationDelay(idleTick: 0.25, drinking: true), 1.0 / 12)
         XCTAssertEqual(animationDelay(idleTick: 1.0 / 15, drinking: true), 1.0 / 15)
     }
+
+    func testTimersFireNearlyOnTime() {
+        // macOS fires a timer at the far end of its tolerance, and a blink lasts 0.18 s.
+        XCTAssertEqual(timerTolerance(for: 4.6), 0.01)
+        XCTAssertEqual(timerTolerance(for: 0.05), 0.005, accuracy: 1e-12)
+    }
+
+    func testTheMinuteCueWaitsForSomeoneToSeeIt() {
+        XCTAssertTrue(minuteCueMayPlay(faceShown: true, iconShown: true, charging: false, displayAsleep: false, sessionActive: true))
+        XCTAssertFalse(minuteCueMayPlay(faceShown: true, iconShown: true, charging: false, displayAsleep: true, sessionActive: true))
+        XCTAssertFalse(minuteCueMayPlay(faceShown: true, iconShown: true, charging: false, displayAsleep: false, sessionActive: false))
+        XCTAssertFalse(minuteCueMayPlay(faceShown: true, iconShown: true, charging: true, displayAsleep: false, sessionActive: true))
+        XCTAssertFalse(minuteCueMayPlay(faceShown: false, iconShown: true, charging: false, displayAsleep: false, sessionActive: true))
+        XCTAssertFalse(minuteCueMayPlay(faceShown: true, iconShown: false, charging: false, displayAsleep: false, sessionActive: true))
+    }
 }

@@ -96,4 +96,12 @@ final class GlyphFaceTests: XCTestCase {
         XCTAssertEqual(ink(volta(age: age, idle: .init(gaze: 1)), in: casing).count, ink(img, in: casing).count,
                        accuracy: ink(img, in: casing).count * 0.01)
     }
+
+    func testHeavyLidsStayDownThroughBlinksAndYawns() {
+        let img = volta()
+        let rest = ink(volta(idle: .init(tired: 1)), in: eyeBand(img)).height
+        for idle in [BatteryGlyph.Idle(blink: 0.3, tired: 1), .init(yawn: 0.2, tired: 1), .init(blink: 0.6, tired: 1)] {
+            XCTAssertLessThanOrEqual(ink(volta(idle: idle), in: eyeBand(img)).height, rest + 0.05)
+        }
+    }
 }

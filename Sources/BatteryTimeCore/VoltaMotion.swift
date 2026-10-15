@@ -26,3 +26,17 @@ public func voltaMayMove(faceShown: Bool, reduceMotion: Bool, displayAsleep: Boo
 public func animationDelay(idleTick: TimeInterval?, drinking: Bool) -> TimeInterval? {
     [idleTick, drinking ? 1.0 / 12 : nil].compactMap { $0 }.min()
 }
+
+/// How late Volta's timer may fire. macOS fires a timer at the far end of its
+/// tolerance, and a blink lasts 0.18 s, so it never gets more than 10 ms:
+/// coalescing about one wakeup a second saves nothing next to a redraw.
+public func timerTolerance(for delay: TimeInterval) -> TimeInterval {
+    min(delay * 0.1, 0.01)
+}
+
+/// Whether the twice-a-minute cue may play: his face is showing, he isn't
+/// sipping (charging), and someone could be looking.
+public func minuteCueMayPlay(faceShown: Bool, iconShown: Bool, charging: Bool,
+                             displayAsleep: Bool, sessionActive: Bool) -> Bool {
+    faceShown && iconShown && !charging && !displayAsleep && sessionActive
+}

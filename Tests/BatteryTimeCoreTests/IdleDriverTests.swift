@@ -230,4 +230,20 @@ final class IdleDriverTests: XCTestCase {
             t += 0.01
         }
     }
+
+    func testTickDrivenFramesAreAlmostNeverRepeats() {
+        // Every redraw costs ~5 ms of CPU, so one that changes nothing is waste.
+        for mood in [IdleMood.awake(tired: false), .awake(tired: true), .sleepy, .drinking] {
+            var d = IdleDriver(seed: 26, mood: mood, at: 0)
+            var t = 0.0, frames = 0, repeats = 0
+            var last: IdlePose?
+            while t < 3600 {
+                let p = d.pose(at: t)
+                if p == last { repeats += 1 }
+                last = p; frames += 1
+                t += d.nextTick(after: t)
+            }
+            XCTAssertLessThanOrEqual(Double(repeats) / Double(frames), 0.03, "\(mood)")
+        }
+    }
 }

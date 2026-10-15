@@ -95,8 +95,9 @@ final class App: NSObject, NSApplicationDelegate {
         watcher.start()
 
         minuteCue = MinuteCue { [weak self] in
-            guard let self, DisplayPrefs.showFace, DisplayPrefs.showIcon,
-                  self.latest?.reading.state != .charging else { return }
+            guard let self, minuteCueMayPlay(faceShown: DisplayPrefs.showFace, iconShown: DisplayPrefs.showIcon,
+                                             charging: self.latest?.reading.state == .charging,
+                                             displayAsleep: self.displayAsleep, sessionActive: self.sessionActive) else { return }
             self.idle.setCue(playing: true, at: ProcessInfo.processInfo.systemUptime)
             self.minuteAnimation.start()
         }
@@ -399,8 +400,9 @@ final class App: NSObject, NSApplicationDelegate {
 
     private func rerender() { if let s = latest { render(s) } }
 
-    /// Re-arms Volta's clock to draw again after `delay`, or stops it (nil).
-    /// The 10% tolerance lets macOS coalesce the wakeups.
+    /// Re-arms Volta's clock to draw again after `delay`, or stops it (nil),
+    /// with at most 10 ms of slack: macOS fires at the far end of a timer's
+    /// tolerance, and a blink is over in 0.18 s.
     private func scheduleAnimation(after delay: TimeInterval?) {
         animTimer?.invalidate()
         animTimer = nil
@@ -409,7 +411,7 @@ final class App: NSObject, NSApplicationDelegate {
             self?.animTimer = nil
             self?.rerender()
         }
-        t.tolerance = delay * 0.1
+        t.tolerance = timerTolerance(for: delay)
         RunLoop.main.add(t, forMode: .common)
         animTimer = t
     }

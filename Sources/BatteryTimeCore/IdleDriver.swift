@@ -140,17 +140,18 @@ public struct IdleDriver {
     }
 
     /// Seconds from `t` until the pose next needs drawing: `movingTick` while
-    /// anything ramps, `sighTick` while only a sigh moves, otherwise one frame
-    /// into the next gesture (its first instant looks like rest), at most
+    /// anything ramps, `sighTick` while only a sigh moves, and through a still
+    /// stretch (a hold, or rest between gestures) one frame into the next
+    /// movement, since its first instant looks like the frame before. At most
     /// `longestTick`.
     public mutating func nextTick(after t: TimeInterval) -> TimeInterval {
         advance(to: t)
         if t - moodChanged < Self.moodEase || t - cueChanged < Self.cueEase { return Self.movingTick }
         var wait = Self.longestTick
         for g in active where g.start <= t && t < g.end {
-            if g.kind == .sigh { wait = min(wait, Self.sighTick); continue }
-            guard let still = stillUntil(g, at: t - g.start) else { return Self.movingTick }
-            wait = min(wait, still - t)
+            let frame = g.kind == .sigh ? Self.sighTick : Self.movingTick
+            if let still = stillUntil(g, at: t - g.start) { wait = min(wait, still - t + frame) }
+            else { wait = min(wait, frame) }
         }
         if !cuePlaying {
             for k in Self.kinds(for: mood) {
@@ -272,10 +273,18 @@ public struct IdleDriver {
         }
     }
 
-    /// While a glance holds still, when it moves again (absolute time).
+    /// While a gesture holds still, when it moves again (absolute time); nil
+    /// while it moves. A stir's settle looks like rest, so it never moves again.
     private func stillUntil(_ g: Gesture, at u: TimeInterval) -> TimeInterval? {
-        guard g.kind == .glance, u >= 0.25, u < 0.25 + g.hold else { return nil }
-        return g.start + 0.25 + g.hold
+        func hold(_ from: TimeInterval, _ to: TimeInterval) -> TimeInterval? { u >= from && u < to ? g.start + to : nil }
+        switch g.kind {
+        case .glance: return hold(0.25, 0.25 + g.hold)
+        case .blink: return nil
+        case .yawn: return hold(0.6, 1.8)
+        case .sigh: return hold(0.4 * g.length, 0.5 * g.length)
+        case .peek: return hold(0.45, 1.15)
+        case .stir: return u >= 5.0 ? .infinity : hold(0.65, 1.35) ?? hold(2.2, 3.4)
+        }
     }
 
     private func cueMask(at t: TimeInterval) -> Double {
