@@ -8,6 +8,10 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.11.0] - 2026-10-15
+
+- The caterpillar icon in the menu bar now supports a walking animation, adding a new visual state to the character.
+
 ## [1.10.0] - 2026-10-14
 
 - Volta now looks brand new down to 92.5% battery health (he used to wrinkle from 99%), then wears out all the way to 40%: wrinkles, then a grandpa's brows, eye bags and heavy lids, then a crack with a band-aid on it, then drips of his charge (in its colour) and a spreading puddle, and finally the patch gives way, an eye goes ✕ and his terminal falls off into the puddle
