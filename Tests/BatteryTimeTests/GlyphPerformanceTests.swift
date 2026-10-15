@@ -9,8 +9,8 @@ import AppKit
 @testable import BatteryTime
 
 final class GlyphPerformanceTests: XCTestCase {
-    /// The idle redraws ~6 times a second on average; each frame must stay
-    /// cheap for the energy budget (< 0.5% of a core).
+    /// The idle redraws about once a second on battery, and each redraw also
+    /// costs macOS ~5 ms of its own, so drawing a frame must stay well under that.
     func testAFrameDrawsInUnderTwoMilliseconds() {
         let frames = 300
         let start = Date()
