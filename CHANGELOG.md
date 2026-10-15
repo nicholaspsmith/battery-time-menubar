@@ -8,6 +8,14 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.11.0] - 2026-10-15
+
+- Volta has a new face in BMO's proportions: small dot eyes set wide and a wide, shallow mouth, with an open D grin when his charge sloshes
+- He idles all the time. On battery he glances side to side, blinks, sighs now and then and yawns (more often, with drooping lids, at 20% and below). Charging he peeks out between sips. Full he dozes, stirring now and then for a look round and a yawn
+- Settings ▸ Animate Volta turns the idle off. Reduce Motion stills him entirely, and he stops drawing while the display sleeps
+- The README's menu-bar screenshots show the current Volta
+
+
 ## [1.10.0] - 2026-10-14
 
 - Volta now looks brand new down to 92.5% battery health (he used to wrinkle from 99%), then wears out all the way to 40%: wrinkles, then a grandpa's brows, eye bags and heavy lids, then a crack with a band-aid on it, then drips of his charge (in its colour) and a spreading puddle, and finally the patch gives way, an eye goes ✕ and his terminal falls off into the puddle
