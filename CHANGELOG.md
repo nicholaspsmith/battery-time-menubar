@@ -8,6 +8,10 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.14.0] - 2026-10-15
+
+- Carol now sleeps in the menu bar, with her eyes closing, body breathing, and Zs floating above her head.
+
 ## [1.13.0] - 2026-10-15
 
 - Volta has a new face in BMO's proportions: small dot eyes set wide and a wide, shallow mouth, with an open D grin when his charge sloshes
