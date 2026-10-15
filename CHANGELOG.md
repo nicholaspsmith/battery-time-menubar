@@ -8,13 +8,21 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
-## [1.11.0] - 2026-10-15
+## [1.13.0] - 2026-10-15
 
 - Volta has a new face in BMO's proportions: small dot eyes set wide and a wide, shallow mouth, with an open D grin when his charge sloshes
 - He idles all the time. On battery he glances side to side, blinks, sighs now and then and yawns (more often, with drooping lids, at 20% and below). Charging he peeks out between sips. Full he dozes, stirring now and then for a look round and a yawn
 - Settings ▸ Animate Volta turns the idle off. Reduce Motion stills him entirely, and he stops drawing while the display sleeps
 - The README's menu-bar screenshots show the current Volta
 
+## [1.12.0] - 2026-10-15
+
+- Carol's headband no longer gets cut off at the top of the icon, and her head movement is now smoother and more natural.
+- Carol's walking animation is now smoother and more responsive to changes in her pace.
+
+## [1.11.0] - 2026-10-15
+
+- The caterpillar icon in the menu bar now supports a walking animation, adding a new visual state to the character.
 
 ## [1.10.0] - 2026-10-14
 
