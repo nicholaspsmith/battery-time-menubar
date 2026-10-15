@@ -61,7 +61,7 @@ so it stays visible.
 - **Battery health** — with the face on, Volta wears out with the battery. Down
   to 92.5% health he looks new. Below that he wrinkles (forehead, crow's feet,
   laugh lines; to 85%), turns grandpa (bushy brows, eye bags, heavy lids; to
-  75%), cracks and gets a band-aid on it (to 65%), melts into drips (to 55%),
+  75%), cracks and gets a band-aid on it (to 65%), drips his charge (to 55%),
   leaks a puddle (to 45%), and falls apart: the patch gives way, an eye goes ✕
   and his terminal swings loose, until at 40% or less it has dropped into the
   puddle. Ten years of daily use typically leaves a battery at 40–60%.

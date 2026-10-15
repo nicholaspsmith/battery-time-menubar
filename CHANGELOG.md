@@ -10,7 +10,7 @@ Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 
 ## [1.10.0] - 2026-10-14
 
-- Volta now looks brand new down to 92.5% battery health (he used to wrinkle from 99%), then wears out all the way to 40%: wrinkles, then a grandpa's brows, eye bags and heavy lids, then a crack with a band-aid on it, then melting drips, a leaking puddle, and finally the patch gives way, an eye goes ✕ and his terminal falls off into the puddle
+- Volta now looks brand new down to 92.5% battery health (he used to wrinkle from 99%), then wears out all the way to 40%: wrinkles, then a grandpa's brows, eye bags and heavy lids, then a crack with a band-aid on it, then drips of his charge (in its colour) and a spreading puddle, and finally the patch gives way, an eye goes ✕ and his terminal falls off into the puddle
 - Health thresholds use the exact capacity ratio, so 92.9% no longer counts as 92%
 
 ## [1.9.0] - 2026-10-09

@@ -59,7 +59,7 @@ public enum BatteryGlyph {
         // - blink: 0...1 through the once-a-minute blink on battery.
         // Not animated:
         // - age: 0...1, how worn the battery is (`BatteryGlyph.age(health:)`).
-        //   He wrinkles, goes grandpa, cracks, melts, leaks and falls apart.
+        //   He wrinkles, goes grandpa, cracks, leaks and falls apart.
         let batteryPct = max(0, min(100, pct))
         let greenFill = face && charging && fillKind == .none
         let drinking = face && charging
@@ -73,7 +73,7 @@ public enum BatteryGlyph {
         let wrinkled = stage(wornFrom, 85)  // forehead creases, crow's feet, laugh lines
         let grandpa = stage(85, 75)         // bushy brows, eye bags, heavy lids
         let cracked = stage(75, 65)         // a crack down his casing, then a band-aid on it
-        let melting = stage(65, 55)         // his bottom edge sags into drips
+        let dripping = stage(65, 55)        // drips of his charge seep from his bottom edge
         let leaking = stage(55, 45)         // a drip lets go and a puddle spreads
         let falling = stage(45, wornOut)    // the crack splits, his terminal swings loose, an ✕ eye
         let fallen = worn >= 1              // his terminal has dropped into the puddle
@@ -115,7 +115,7 @@ public enum BatteryGlyph {
         let leadGap: CGFloat = (!lead.isEmpty && glyphW > 0) ? gap : 0
         let trailGap: CGFloat = (!trailing.isEmpty && (glyphW > 0 || !lead.isEmpty)) ? gap : 0
         let width = max(1, ceil(leadSize.width + leadGap + glyphW + trailGap + textSize.width))
-        let height = max(1, ceil(max(fontH, leadSize.height, textSize.height, bodyH, (drinking || stuffed || melting > 0) ? 22 : 0)))
+        let height = max(1, ceil(max(fontH, leadSize.height, textSize.height, bodyH, (drinking || stuffed || dripping > 0) ? 22 : 0)))
 
         func knockout(_ block: () -> Void, clip: NSRect? = nil) {
             NSGraphicsContext.current?.saveGraphicsState()
@@ -173,16 +173,17 @@ public enum BatteryGlyph {
                 }
                 NSGraphicsContext.current?.restoreGraphicsState()
             }
-            // Melting: drips sag from his bottom edge one after another, the
-            // first letting go of its blob as he starts to leak, and a puddle
-            // spreads under him (out to his fallen terminal once it drops).
-            func drawMelt() {
-                ink.setFill()
+            // Leaking: drips of his charge, in its colour, seep from his bottom
+            // edge one after another, the first letting go of its blob as he
+            // starts to leak, and a puddle spreads under him (out to his
+            // fallen terminal once it drops).
+            func drawLeak() {
+                (greenFill ? NSColor.systemGreen : fill).setFill()
                 let drips: [(x: CGFloat, w: CGFloat, len: CGFloat, from: CGFloat)] =
                     [(0.5, 2.0, 1.9, 0), (0.27, 1.6, 1.5, 0.3), (0.74, 1.5, 1.2, 0.55)]
                 let letGo = leaking > 0.33
                 for (i, d) in drips.enumerated() {
-                    let g = max(0, min(1, (melting - d.from) / (1 - d.from) * 1.4))
+                    let g = max(0, min(1, (dripping - d.from) / (1 - d.from) * 1.4))
                     guard g > 0 else { continue }
                     drip(x: originX + bodyW * d.x, w: d.w, len: i == 0 && letGo ? 0.35 : d.len * g).fill()
                 }
@@ -220,7 +221,7 @@ public enum BatteryGlyph {
                 return p
             }
             ink.setStroke(); bodyPath.stroke()
-            drawMelt()
+            drawLeak()
             if fallen {
                 // a gap round it, so it reads apart from the puddle it lies in
                 knockout({ let gap = nub.copy() as! NSBezierPath; gap.lineWidth = 1.2; gap.stroke() })
