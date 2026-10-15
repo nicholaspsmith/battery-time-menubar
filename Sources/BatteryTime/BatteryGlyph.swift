@@ -554,7 +554,7 @@ public enum BatteryGlyph {
                 }
 
                 if drinking {
-                    drawStraw(mouth: NSPoint(x: cx, y: mouthY), bodyW: bodyW, bodyH: bodyH, sip: sip)
+                    drawStraw(mouth: NSPoint(x: cx, y: mouthY), bodyH: bodyH, sip: sip)
                 }
                 if stuffed, let b = burp, b > 0.25, b < 0.95 {
                     // The burp: a little bubble rising from his mouth and popping.
@@ -637,51 +637,25 @@ public enum BatteryGlyph {
     /// Smoothstep 0...1.
     private static func ease(_ u: CGFloat) -> CGFloat { let v = max(0, min(1, u)); return v * v * (3 - 2 * v) }
 
-    /// Volta drinking through a straw from a big cup of green charge: only the
-    /// cup's top shows, rising from below the bar in front of him, and a red
-    /// bendy straw (outlined in its own darker red, ridged at the bend, with
-    /// a see-through core) runs from the drink to his mouth. Each sip the
-    /// charge climbs the straw, stays while he drinks, and drains back.
-    private static func drawStraw(mouth: NSPoint, bodyW: CGFloat, bodyH: CGFloat, sip: CGFloat?) {
+    /// Volta drinking green charge through a red bendy straw (outlined in its
+    /// own darker red, ridged below the bend, with a see-through core) that
+    /// rises from below the bar, the drink out of sight. Each sip the charge
+    /// climbs the straw, stays while he drinks, and drains back.
+    private static func drawStraw(mouth: NSPoint, bodyH: CGFloat, sip: CGFloat?) {
         guard let ctx = NSGraphicsContext.current?.cgContext else { return }
         // Still (no animation): the straw full, mid-drink.
         let climb = sip.map(strawFill) ?? 1
 
-        // The glass: a tumbler, a little wider at the rim.
-        // Only the top of a big cup shows: it rises from below the bar, so
-        // its rim is all you see of it.
-        let cupW: CGFloat = bodyH * 0.95, cupH: CGFloat = bodyH * 1.1
-        let cupX = mouth.x + bodyW * 0.235, cupY: CGFloat = -bodyH * 0.78
-        let taper = cupW * 0.1
-        let glass = CGMutablePath()
-        glass.move(to: CGPoint(x: cupX - cupW / 2 + taper, y: cupY))
-        glass.addLine(to: CGPoint(x: cupX + cupW / 2 - taper, y: cupY))
-        glass.addLine(to: CGPoint(x: cupX + cupW / 2, y: cupY + cupH))
-        glass.addLine(to: CGPoint(x: cupX - cupW / 2, y: cupY + cupH))
-        glass.closeSubpath()
-        let edge = NSColor(srgbRed: 0.42, green: 0.48, blue: 0.55, alpha: 1).cgColor
-
-        // The straw: up out of the glass, bent over, down into his mouth.
+        // The straw, shaped like a 7: a long stem up from below the bar, then
+        // a short bend over into his mouth.
         let w: CGFloat = 2.6, rim: CGFloat = 0.42
-        let foot = CGPoint(x: cupX + cupW * 0.24, y: 0)
-        let bend = CGPoint(x: foot.x, y: mouth.y + bodyH * 0.09)
         let tip = CGPoint(x: mouth.x + bodyH * 0.06, y: mouth.y + bodyH * 0.01)
+        let foot = CGPoint(x: tip.x + bodyH * 0.27, y: 0)
+        let bend = CGPoint(x: foot.x, y: mouth.y + bodyH * 0.09)
         let straw = CGMutablePath()
         straw.move(to: foot); straw.addLine(to: bend); straw.addLine(to: tip)
         let red = NSColor(srgbRed: 1, green: 0.3, blue: 0.4, alpha: 1).cgColor
         let darkRed = NSColor(srgbRed: 0.62, green: 0.08, blue: 0.18, alpha: 1).cgColor
-
-        // Glass back and liquid first, so the straw stands in the drink.
-        ctx.saveGState()
-        ctx.addPath(glass); ctx.setFillColor(NSColor(white: 1, alpha: 0.35).cgColor); ctx.fillPath()
-        let level = cupY + cupH * (0.86 - 0.05 * climb)
-        ctx.addPath(glass); ctx.clip()
-        ctx.setFillColor(NSColor.systemGreen.cgColor)
-        ctx.fill(CGRect(x: cupX - cupW, y: cupY, width: cupW * 2, height: level - cupY))
-        // The drink's surface, a lighter line just under the rim.
-        ctx.setFillColor(NSColor(srgbRed: 0.6, green: 0.95, blue: 0.65, alpha: 1).cgColor)
-        ctx.fill(CGRect(x: cupX - cupW, y: level - 0.7, width: cupW * 2, height: 0.7))
-        ctx.restoreGState()
 
         // Straw outline, body, see-through core and the climbing charge.
         let outer = straw.copy(strokingWithWidth: w, lineCap: .butt, lineJoin: .round, miterLimit: 4)
@@ -705,22 +679,14 @@ public enum BatteryGlyph {
         ctx.addPath(column.copy(strokingWithWidth: w, lineCap: .butt, lineJoin: .round, miterLimit: 4))
         ctx.setFillColor(NSColor.systemGreen.cgColor); ctx.fillPath()
         ctx.restoreGState()
-        // Ridges where it bends.
+        // Ridges on the stem just below the bend.
         ctx.saveGState(); ctx.addPath(outer); ctx.clip()
+        ctx.clip(to: CGRect(x: bend.x - w / 2, y: 0, width: w, height: bend.y))
         ctx.setStrokeColor(darkRed); ctx.setLineWidth(0.35)
-        for k in 1...3 {
-            let y = bend.y - CGFloat(k) * 0.7
+        for k in 0..<3 {
+            let y = bend.y - w / 2 - 0.4 - CGFloat(k) * 0.7
             ctx.move(to: CGPoint(x: bend.x - w, y: y)); ctx.addLine(to: CGPoint(x: bend.x + w, y: y))
         }
         ctx.strokePath(); ctx.restoreGState()
-
-        // Glass front: the rim and sides over the straw, and a glint.
-        ctx.saveGState()
-        ctx.addPath(glass); ctx.setStrokeColor(edge); ctx.setLineWidth(0.55); ctx.setLineJoin(.round); ctx.strokePath()
-        ctx.setStrokeColor(NSColor(white: 1, alpha: 0.8).cgColor); ctx.setLineWidth(0.4); ctx.setLineCap(.round)
-        ctx.move(to: CGPoint(x: cupX - cupW / 2 + 1.6, y: 0.5))
-        ctx.addLine(to: CGPoint(x: cupX - cupW / 2 + 1.3, y: cupY + cupH - 1.6))
-        ctx.strokePath()
-        ctx.restoreGState()
     }
 }
