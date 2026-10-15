@@ -23,11 +23,16 @@ public enum BatteryFill {
 /// charging (full, or held at a charge limit) he is stuffed, cheeks puffed,
 /// glowing yellow.
 public enum BatteryGlyph {
-    /// How worn a battery at `health` percent looks: new at 100, a grandpa
-    /// from 80 down.
-    public static func age(health: Int?) -> CGFloat {
+    /// Health (percent) at and above which Volta looks new, and at and below
+    /// which he is wrecked. Ten years of daily use leaves a battery around
+    /// 40–60%; below 40 it has usually swollen or been replaced.
+    static let wornFrom: CGFloat = 92.5, wornOut: CGFloat = 40
+
+    /// How worn a battery at `health` percent looks, 0...1: new down to
+    /// `wornFrom`, wrecked at `wornOut`.
+    public static func age(health: Double?) -> CGFloat {
         guard let h = health else { return 0 }
-        return max(0, min(1, CGFloat(100 - h) / 20))
+        return max(0, min(1, (wornFrom - CGFloat(h)) / (wornFrom - wornOut)))
     }
 
     public static func image(
@@ -54,11 +59,24 @@ public enum BatteryGlyph {
         // - blink: 0...1 through the once-a-minute blink on battery.
         // Not animated:
         // - age: 0...1, how worn the battery is (`BatteryGlyph.age(health:)`).
-        //   Wrinkles deepen with it; at 1 he is a grandpa, bushy brows and all.
+        //   He wrinkles, goes grandpa, cracks, leaks and falls apart.
         let batteryPct = max(0, min(100, pct))
         let greenFill = face && charging && fillKind == .none
         let drinking = face && charging
         let stuffed = face && plugged && !charging
+
+        // Wear, staged by the health it stands for: each stage comes in over
+        // its own band of health and stays as the next arrives.
+        let worn = face ? max(0, min(1, age)) : 0
+        let health = wornFrom - worn * (wornFrom - wornOut)
+        func stage(_ from: CGFloat, _ to: CGFloat) -> CGFloat { max(0, min(1, (from - health) / (from - to))) }
+        let wrinkled = stage(wornFrom, 85)  // forehead creases, crow's feet, laugh lines
+        let grandpa = stage(85, 75)         // bushy brows, eye bags, heavy lids
+        let cracked = stage(75, 65)         // a crack down his casing, then a band-aid on it
+        let dripping = stage(65, 55)        // drips of his charge seep from his bottom edge
+        let leaking = stage(55, 45)         // a drip lets go and a puddle spreads
+        let falling = stage(45, wornOut)    // the crack splits, his terminal swings loose, an ✕ eye
+        let fallen = worn >= 1              // his terminal has dropped into the puddle
 
         // ink = outline / text / % / bolt color; fill = battery-fill color (defaults
         // to ink so a plain mono icon emits as a template that auto-adapts).
@@ -87,15 +105,17 @@ public enum BatteryGlyph {
         let k: CGFloat = face ? 17.0 / 13.0 : 1
         let bodyW: CGFloat = 26 * k, bodyH: CGFloat = 13 * k, nubW: CGFloat = 2 * k, nubH: CGFloat = 5.5 * k
         let radius: CGFloat = 3.2 * k, lineW: CGFloat = 1.2 + (k - 1) * 0.5, fillInset: CGFloat = 1.3 * k, gap: CGFloat = 4
-        // The straw pokes out of the top of the battery, and the glow spreads
-        // past its edges, so both states take the bar's full height and the
-        // glow a little room either side.
+        // The straw pokes out of the top of the battery, drips hang below it,
+        // and the glow spreads past its edges, so those take the bar's full
+        // height and the glow a little room either side. A terminal swinging
+        // loose (or lying in the puddle) needs room to its right.
         let glowPad: CGFloat = stuffed ? 2.5 : 0
-        let glyphW: CGFloat = bodyW + nubW + glowPad * 2
+        let nubPad: CGFloat = falling > 0 ? 5 : 0
+        let glyphW: CGFloat = bodyW + nubW + glowPad * 2 + nubPad
         let leadGap: CGFloat = (!lead.isEmpty && glyphW > 0) ? gap : 0
         let trailGap: CGFloat = (!trailing.isEmpty && (glyphW > 0 || !lead.isEmpty)) ? gap : 0
         let width = max(1, ceil(leadSize.width + leadGap + glyphW + trailGap + textSize.width))
-        let height = max(1, ceil(max(fontH, leadSize.height, textSize.height, bodyH, (drinking || stuffed) ? 22 : 0)))
+        let height = max(1, ceil(max(fontH, leadSize.height, textSize.height, bodyH, (drinking || stuffed || dripping > 0) ? 22 : 0)))
 
         func knockout(_ block: () -> Void, clip: NSRect? = nil) {
             NSGraphicsContext.current?.saveGraphicsState()
@@ -125,7 +145,18 @@ public enum BatteryGlyph {
             let bodyRect = NSRect(x: originX + lineW/2, y: by + lineW/2, width: bodyW - lineW, height: bodyH - lineW)
             let bodyPath = NSBezierPath(roundedRect: bodyRect, xRadius: radius, yRadius: radius)
             bodyPath.lineWidth = lineW
-            let nub = NSBezierPath(roundedRect: NSRect(x: originX + bodyW - lineW, y: (height - nubH)/2, width: nubW, height: nubH), xRadius: 0.9, yRadius: 0.9)
+            let nubRect = NSRect(x: originX + bodyW - lineW, y: (height - nubH)/2, width: nubW, height: nubH)
+            var nub = NSBezierPath(roundedRect: nubRect, xRadius: 0.9, yRadius: 0.9)
+            if fallen {
+                // Dropped off: lying in the puddle under his far corner.
+                nub = NSBezierPath(roundedRect: NSRect(x: originX + bodyW - 1, y: 0.3, width: nubH, height: nubW), xRadius: 0.9, yRadius: 0.9)
+            } else if falling > 0 {
+                // Come loose at the top, swinging down from its bottom corner.
+                var t = AffineTransform(translationByX: nubRect.minX, byY: nubRect.minY)
+                t.rotate(byDegrees: -50 * falling)
+                t.translate(x: -nubRect.minX, y: -nubRect.minY)
+                nub.transform(using: t)
+            }
             if stuffed {
                 // The glow: a soft yellow halo round the outline and terminal.
                 NSGraphicsContext.current?.saveGraphicsState()
@@ -142,7 +173,59 @@ public enum BatteryGlyph {
                 }
                 NSGraphicsContext.current?.restoreGraphicsState()
             }
+            // Leaking: drips of his charge, in its colour, seep from his bottom
+            // edge one after another, the first letting go of its blob as he
+            // starts to leak, and a puddle spreads under him (out to his
+            // fallen terminal once it drops).
+            func drawLeak() {
+                (greenFill ? NSColor.systemGreen : fill).setFill()
+                let drips: [(x: CGFloat, w: CGFloat, len: CGFloat, from: CGFloat)] =
+                    [(0.5, 2.0, 1.9, 0), (0.27, 1.6, 1.5, 0.3), (0.74, 1.5, 1.2, 0.55)]
+                let letGo = leaking > 0.33
+                for (i, d) in drips.enumerated() {
+                    let g = max(0, min(1, (dripping - d.from) / (1 - d.from) * 1.4))
+                    guard g > 0 else { continue }
+                    drip(x: originX + bodyW * d.x, w: d.w, len: i == 0 && letGo ? 0.35 : d.len * g).fill()
+                }
+                if letGo {
+                    // the blob, mid-fall: a teardrop, point up
+                    let x = originX + bodyW * 0.5, r: CGFloat = 0.55, c = NSPoint(x: x, y: 0.95 + r)
+                    let drop = NSBezierPath()
+                    drop.move(to: NSPoint(x: x, y: by - 0.45))
+                    drop.curve(to: NSPoint(x: x - r, y: c.y), controlPoint1: NSPoint(x: x - r * 0.3, y: c.y + r * 1.1),
+                               controlPoint2: NSPoint(x: x - r, y: c.y + r * 0.6))
+                    drop.appendArc(withCenter: c, radius: r, startAngle: 180, endAngle: 360)
+                    drop.curve(to: NSPoint(x: x, y: by - 0.45), controlPoint1: NSPoint(x: x + r, y: c.y + r * 0.6),
+                               controlPoint2: NSPoint(x: x + r * 0.3, y: c.y + r * 1.1))
+                    drop.fill()
+                }
+                if leaking > 0 {
+                    let l = originX + bodyW * (0.5 - 0.34 * leaking)
+                    let r = fallen ? originX + bodyW + nubH : originX + bodyW * (0.5 + 0.3 * leaking)
+                    NSBezierPath(ovalIn: NSRect(x: l, y: 0, width: r - l, height: 0.9)).fill()
+                }
+            }
+            // A drip hanging from the bottom edge at `x`: a neck flaring into
+            // the outline, a round blob at the end.
+            func drip(x: CGFloat, w: CGFloat, len: CGFloat) -> NSBezierPath {
+                let top = by + lineW / 2, r = min(w / 2, len * 0.6), f: CGFloat = 0.5
+                let c = NSPoint(x: x, y: by - len + r)
+                let p = NSBezierPath()
+                p.move(to: NSPoint(x: x - r - f, y: top))
+                p.curve(to: NSPoint(x: x - r, y: c.y), controlPoint1: NSPoint(x: x - r * 0.7, y: top),
+                        controlPoint2: NSPoint(x: x - r, y: (top + c.y) / 2))
+                p.appendArc(withCenter: c, radius: r, startAngle: 180, endAngle: 360)
+                p.curve(to: NSPoint(x: x + r + f, y: top), controlPoint1: NSPoint(x: x + r, y: (top + c.y) / 2),
+                        controlPoint2: NSPoint(x: x + r * 0.7, y: top))
+                p.close()
+                return p
+            }
             ink.setStroke(); bodyPath.stroke()
+            drawLeak()
+            if fallen {
+                // a gap round it, so it reads apart from the puddle it lies in
+                knockout({ let gap = nub.copy() as! NSBezierPath; gap.lineWidth = 1.2; gap.stroke() })
+            }
             ink.setFill(); nub.fill()
             let innerW = bodyRect.width - 2*fillInset
             let fillRect = NSRect(x: bodyRect.minX + fillInset, y: bodyRect.minY + fillInset,
@@ -204,6 +287,42 @@ public enum BatteryGlyph {
             }
 
             let cx = originX + bodyW/2, cy = height/2
+
+            // Cracked: a crack runs down from his top edge, further the more
+            // cracked he is, and gets a band-aid slapped across it; once he
+            // falls apart it runs right through and gapes. Knocked through
+            // the casing and charge here; the face pass inks it over the
+            // empty part.
+            var crack: NSBezierPath?
+            var bandAid: NSBezierPath?
+            if cracked > 0 {
+                let x = originX + bodyW * 0.14
+                // It ends under the band-aid until the patch gives way.
+                let aidAt = NSPoint(x: x + 0.3, y: cy - bodyH * 0.12)
+                var pts = [NSPoint(x: x + 0.4, y: by + bodyH + 0.5),
+                           NSPoint(x: x - 0.8, y: cy + bodyH * 0.24),
+                           NSPoint(x: x + 0.8, y: cy + bodyH * 0.06),
+                           aidAt]
+                if falling > 0 { pts += [NSPoint(x: x - 0.7, y: cy - bodyH * 0.3), NSPoint(x: x - 0.1, y: by - 0.5)] }
+                let c = polyline(pts, upTo: cracked)
+                c.lineWidth = 0.6 + 0.25 * cracked + 0.9 * falling
+                crack = c
+                if cracked > 0.7 {
+                    // two strips crossed in an ✕, cartoon style
+                    let w = bodyH * 0.46, h = bodyH * 0.1
+                    let aid = NSBezierPath()
+                    for angle in [35.0, -35.0] as [CGFloat] {
+                        var t = AffineTransform(translationByX: aidAt.x, byY: aidAt.y)
+                        t.rotate(byDegrees: angle)
+                        let strip = NSBezierPath(roundedRect: NSRect(x: -w / 2, y: -h / 2, width: w, height: h), xRadius: h / 2, yRadius: h / 2)
+                        strip.transform(using: t)
+                        aid.append(strip)
+                    }
+                    bandAid = aid
+                }
+                knockout({ c.stroke() })
+            }
+
             if face {
                 // Volta's face. On battery his mouth follows the charge — a smile
                 // when full, a flat line around half, a frown when low. Charging
@@ -225,9 +344,22 @@ public enum BatteryGlyph {
                     guard let b = blink else { return 0 }
                     return b < 0.35 ? b / 0.35 : b < 0.5 ? 1 : max(0, 1 - (b - 0.5) / 0.4)
                 }()
+                // Falling apart, his right eye is an ✕.
+                let xEye = falling > 0.35
+                let eyesShown = xEye ? [eyeXs[0]] : eyeXs
+                if xEye {
+                    let ex = eyeXs[1], r = eye * 0.55
+                    for d in [-1.0, 1.0] as [CGFloat] {
+                        let e = NSBezierPath()
+                        e.move(to: NSPoint(x: ex - r, y: eyeY + eye / 2 - d * r))
+                        e.line(to: NSPoint(x: ex + r, y: eyeY + eye / 2 + d * r))
+                        e.lineWidth = mouthLW * 0.85; e.lineCapStyle = .round
+                        strokes.append(e)
+                    }
+                }
 
                 if drinking {
-                    for ex in eyeXs {                                  // happy ^ ^
+                    for ex in eyesShown {                              // happy ^ ^
                         let e = NSBezierPath()
                         e.move(to: NSPoint(x: ex - eye * 0.8, y: eyeY + eye * 0.2))
                         e.line(to: NSPoint(x: ex, y: eyeY + eye * 1.0))
@@ -236,7 +368,7 @@ public enum BatteryGlyph {
                         strokes.append(e)
                     }
                 } else if stuffed {
-                    for ex in eyeXs {                                  // contented ‿ ‿
+                    for ex in eyesShown {                              // contented ‿ ‿
                         let e = NSBezierPath()
                         e.appendArc(withCenter: NSPoint(x: ex, y: eyeY + eye * 0.9), radius: eye * 0.75,
                                     startAngle: 200, endAngle: 340, clockwise: false)
@@ -244,7 +376,7 @@ public enum BatteryGlyph {
                         strokes.append(e)
                     }
                 } else if shut > 0.85 {
-                    for ex in eyeXs {                                  // mid-blink: a line
+                    for ex in eyesShown {                              // mid-blink: a line
                         let e = NSBezierPath()
                         e.move(to: NSPoint(x: ex - eye * 0.6, y: eyeY + eye / 2))
                         e.line(to: NSPoint(x: ex + eye * 0.6, y: eyeY + eye / 2))
@@ -253,8 +385,19 @@ public enum BatteryGlyph {
                     }
                 } else {
                     let h = eye * (1 - shut)
-                    for ex in eyeXs {
-                        fills.append(NSBezierPath(ovalIn: NSRect(x: ex - eye/2, y: eyeY + (eye - h) / 2, width: eye, height: max(0.6, h))))
+                    // A grandpa's heavy lids cut his eyes flat across the top.
+                    let lid = 0.45 * grandpa
+                    for ex in eyesShown {
+                        if shut == 0, lid > 0 {
+                            let r = eye / 2
+                            let th = asin(max(-1, min(1, (r - lid * eye) / r))) * 180 / .pi
+                            let e = NSBezierPath()
+                            e.appendArc(withCenter: NSPoint(x: ex, y: eyeY + r), radius: r, startAngle: th, endAngle: 180 - th, clockwise: true)
+                            e.close()
+                            fills.append(e)
+                        } else {
+                            fills.append(NSBezierPath(ovalIn: NSRect(x: ex - eye/2, y: eyeY + (eye - h) / 2, width: eye, height: max(0.6, h))))
+                        }
                     }
                 }
 
@@ -306,9 +449,8 @@ public enum BatteryGlyph {
                 // Age lines: forehead creases between the eyes, crow's feet at
                 // their outer corners, and laugh lines beside the mouth, each
                 // appearing in turn and growing longer and bolder with age.
-                let a = max(0, min(1, age))
-                if a > 0 {
-                    let lw = 0.35 + 0.45 * a
+                if wrinkled > 0 {
+                    let lw = 0.35 + 0.45 * wrinkled
                     func line(_ pts: [NSPoint]) {
                         let l = NSBezierPath()
                         l.move(to: pts[0])
@@ -318,7 +460,7 @@ public enum BatteryGlyph {
                         strokes.append(l)
                     }
                     // How far along (0...1) a feature that starts at `from` is.
-                    func grown(_ from: CGFloat) -> CGFloat { max(0, min(1, (a - from) / (1 - from) * 1.5)) }
+                    func grown(_ from: CGFloat) -> CGFloat { max(0, min(1, (wrinkled - from) / (1 - from) * 1.5)) }
                     let foreheadYs = [cy + bodyH * 0.31, cy + bodyH * 0.23]
                     for (i, y) in foreheadYs.enumerated() {
                         let g = grown(CGFloat(i) * 0.35)
@@ -346,16 +488,23 @@ public enum BatteryGlyph {
                                   NSPoint(x: x0 + side * bodyH * 0.02, y: top - len)])
                         }
                     }
-                    if a >= 1 {
-                        // Grandpa's bushy brows, tilted down at the outside.
-                        for ex in eyeXs {
-                            let side: CGFloat = ex < cx ? -1 : 1
-                            let y = eyeY + eye * 1.6
-                            let b = NSBezierPath()
-                            b.move(to: NSPoint(x: ex - side * eye * 0.45, y: y + eye * 0.1))
-                            b.line(to: NSPoint(x: ex + side * eye * 0.8, y: y - eye * 0.15))
-                            b.lineWidth = max(1, bodyH * 0.07); b.lineCapStyle = .round
-                            strokes.append(b)
+                }
+                if grandpa > 0 {
+                    // Grandpa's bushy brows, tilted down at the outside, filling
+                    // out as he ages, and bags under his eyes.
+                    for ex in eyeXs {
+                        let side: CGFloat = ex < cx ? -1 : 1
+                        let y = eyeY + eye * 1.6
+                        let b = NSBezierPath()
+                        b.move(to: NSPoint(x: ex - side * eye * 0.45, y: y + eye * 0.1))
+                        b.line(to: NSPoint(x: ex + side * eye * (0.3 + 0.5 * grandpa), y: y - eye * 0.15))
+                        b.lineWidth = max(0.7, bodyH * 0.07 * (0.6 + 0.4 * grandpa)); b.lineCapStyle = .round
+                        strokes.append(b)
+                        if grandpa > 0.3 {
+                            let bag = NSBezierPath()
+                            bag.appendArc(withCenter: NSPoint(x: ex, y: eyeY + eye * 0.2), radius: eye * 0.7, startAngle: 215, endAngle: 325)
+                            bag.lineWidth = 0.5; bag.lineCapStyle = .round
+                            strokes.append(bag)
                         }
                     }
                 }
@@ -363,6 +512,8 @@ public enum BatteryGlyph {
                 let draw = {
                     for f in fills { f.fill() }
                     for st in strokes { st.stroke() }
+                    crack?.stroke()
+                    bandAid?.fill()
                 }
                 // The face straddles the fill's edge, so it is split there. Over a
                 // yellow fill it is black (a knocked-out hole shows the bar, which
@@ -403,7 +554,7 @@ public enum BatteryGlyph {
                 }
 
                 if drinking {
-                    drawStraw(mouth: NSPoint(x: cx, y: mouthY), bodyW: bodyW, bodyH: bodyH, sip: sip)
+                    drawStraw(mouth: NSPoint(x: cx, y: mouthY), bodyH: bodyH, sip: sip)
                 }
                 if stuffed, let b = burp, b > 0.25, b < 0.95 {
                     // The burp: a little bubble rising from his mouth and popping.
@@ -467,54 +618,44 @@ public enum BatteryGlyph {
         return 0.5 - 0.5 * cos(2 * .pi * u * 4)
     }
 
+    /// The first `f` (0...1) of the polyline through `pts`, by length.
+    private static func polyline(_ pts: [NSPoint], upTo f: CGFloat) -> NSBezierPath {
+        let lens = zip(pts, pts.dropFirst()).map { hypot($1.x - $0.x, $1.y - $0.y) }
+        var left = lens.reduce(0, +) * max(0, min(1, f))
+        let p = NSBezierPath()
+        p.move(to: pts[0])
+        for (i, len) in lens.enumerated() {
+            let a = pts[i], b = pts[i + 1]
+            if left >= len { p.line(to: b); left -= len; continue }
+            let u = left / len
+            p.line(to: NSPoint(x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u))
+            break
+        }
+        return p
+    }
+
     /// Smoothstep 0...1.
     private static func ease(_ u: CGFloat) -> CGFloat { let v = max(0, min(1, u)); return v * v * (3 - 2 * v) }
 
-    /// Volta drinking through a straw from a big cup of green charge: only the
-    /// cup's top shows, rising from below the bar in front of him, and a red
-    /// bendy straw (outlined in its own darker red, ridged at the bend, with
-    /// a see-through core) runs from the drink to his mouth. Each sip the
-    /// charge climbs the straw, stays while he drinks, and drains back.
-    private static func drawStraw(mouth: NSPoint, bodyW: CGFloat, bodyH: CGFloat, sip: CGFloat?) {
+    /// Volta drinking green charge through a red bendy straw (outlined in its
+    /// own darker red, ridged below the bend, with a see-through core) that
+    /// rises from below the bar, the drink out of sight. Each sip the charge
+    /// climbs the straw, stays while he drinks, and drains back.
+    private static func drawStraw(mouth: NSPoint, bodyH: CGFloat, sip: CGFloat?) {
         guard let ctx = NSGraphicsContext.current?.cgContext else { return }
         // Still (no animation): the straw full, mid-drink.
         let climb = sip.map(strawFill) ?? 1
 
-        // The glass: a tumbler, a little wider at the rim.
-        // Only the top of a big cup shows: it rises from below the bar, so
-        // its rim is all you see of it.
-        let cupW: CGFloat = bodyH * 0.95, cupH: CGFloat = bodyH * 1.1
-        let cupX = mouth.x + bodyW * 0.235, cupY: CGFloat = -bodyH * 0.78
-        let taper = cupW * 0.1
-        let glass = CGMutablePath()
-        glass.move(to: CGPoint(x: cupX - cupW / 2 + taper, y: cupY))
-        glass.addLine(to: CGPoint(x: cupX + cupW / 2 - taper, y: cupY))
-        glass.addLine(to: CGPoint(x: cupX + cupW / 2, y: cupY + cupH))
-        glass.addLine(to: CGPoint(x: cupX - cupW / 2, y: cupY + cupH))
-        glass.closeSubpath()
-        let edge = NSColor(srgbRed: 0.42, green: 0.48, blue: 0.55, alpha: 1).cgColor
-
-        // The straw: up out of the glass, bent over, down into his mouth.
+        // The straw, shaped like a 7: a long stem up from below the bar, then
+        // a short bend over into his mouth.
         let w: CGFloat = 2.6, rim: CGFloat = 0.42
-        let foot = CGPoint(x: cupX + cupW * 0.24, y: 0)
-        let bend = CGPoint(x: foot.x, y: mouth.y + bodyH * 0.09)
         let tip = CGPoint(x: mouth.x + bodyH * 0.06, y: mouth.y + bodyH * 0.01)
+        let foot = CGPoint(x: tip.x + bodyH * 0.27, y: 0)
+        let bend = CGPoint(x: foot.x, y: mouth.y + bodyH * 0.09)
         let straw = CGMutablePath()
         straw.move(to: foot); straw.addLine(to: bend); straw.addLine(to: tip)
         let red = NSColor(srgbRed: 1, green: 0.3, blue: 0.4, alpha: 1).cgColor
         let darkRed = NSColor(srgbRed: 0.62, green: 0.08, blue: 0.18, alpha: 1).cgColor
-
-        // Glass back and liquid first, so the straw stands in the drink.
-        ctx.saveGState()
-        ctx.addPath(glass); ctx.setFillColor(NSColor(white: 1, alpha: 0.35).cgColor); ctx.fillPath()
-        let level = cupY + cupH * (0.86 - 0.05 * climb)
-        ctx.addPath(glass); ctx.clip()
-        ctx.setFillColor(NSColor.systemGreen.cgColor)
-        ctx.fill(CGRect(x: cupX - cupW, y: cupY, width: cupW * 2, height: level - cupY))
-        // The drink's surface, a lighter line just under the rim.
-        ctx.setFillColor(NSColor(srgbRed: 0.6, green: 0.95, blue: 0.65, alpha: 1).cgColor)
-        ctx.fill(CGRect(x: cupX - cupW, y: level - 0.7, width: cupW * 2, height: 0.7))
-        ctx.restoreGState()
 
         // Straw outline, body, see-through core and the climbing charge.
         let outer = straw.copy(strokingWithWidth: w, lineCap: .butt, lineJoin: .round, miterLimit: 4)
@@ -538,22 +679,14 @@ public enum BatteryGlyph {
         ctx.addPath(column.copy(strokingWithWidth: w, lineCap: .butt, lineJoin: .round, miterLimit: 4))
         ctx.setFillColor(NSColor.systemGreen.cgColor); ctx.fillPath()
         ctx.restoreGState()
-        // Ridges where it bends.
+        // Ridges on the stem just below the bend.
         ctx.saveGState(); ctx.addPath(outer); ctx.clip()
+        ctx.clip(to: CGRect(x: bend.x - w / 2, y: 0, width: w, height: bend.y))
         ctx.setStrokeColor(darkRed); ctx.setLineWidth(0.35)
-        for k in 1...3 {
-            let y = bend.y - CGFloat(k) * 0.7
+        for k in 0..<3 {
+            let y = bend.y - w / 2 - 0.4 - CGFloat(k) * 0.7
             ctx.move(to: CGPoint(x: bend.x - w, y: y)); ctx.addLine(to: CGPoint(x: bend.x + w, y: y))
         }
         ctx.strokePath(); ctx.restoreGState()
-
-        // Glass front: the rim and sides over the straw, and a glint.
-        ctx.saveGState()
-        ctx.addPath(glass); ctx.setStrokeColor(edge); ctx.setLineWidth(0.55); ctx.setLineJoin(.round); ctx.strokePath()
-        ctx.setStrokeColor(NSColor(white: 1, alpha: 0.8).cgColor); ctx.setLineWidth(0.4); ctx.setLineCap(.round)
-        ctx.move(to: CGPoint(x: cupX - cupW / 2 + 1.6, y: 0.5))
-        ctx.addLine(to: CGPoint(x: cupX - cupW / 2 + 1.3, y: cupY + cupH - 1.6))
-        ctx.strokePath()
-        ctx.restoreGState()
     }
 }

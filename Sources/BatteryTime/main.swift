@@ -217,7 +217,7 @@ final class App: NSObject, NSApplicationDelegate {
                 burp: stuffed ? minute : nil,
                 // The blink takes the first half second of the minute's turn.
                 blink: stuffed ? nil : minuteT.flatMap { $0 < 0.5 ? CGFloat($0 / 0.5) : nil },
-                age: BatteryGlyph.age(health: healthPercent(rawMax: snap.ioreg.rawMaxCapacity, design: snap.ioreg.designCapacity))
+                age: BatteryGlyph.age(health: healthPercentExact(rawMax: snap.ioreg.rawMaxCapacity, design: snap.ioreg.designCapacity))
             )
             controller.setIcon(image)
         } else {

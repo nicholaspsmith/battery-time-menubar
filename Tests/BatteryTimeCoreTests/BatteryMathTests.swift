@@ -14,6 +14,12 @@ final class BatteryMathTests: XCTestCase {
         XCTAssertNil(healthPercent(rawMax: nil, design: 4382))
         XCTAssertNil(healthPercent(rawMax: 4100, design: 0))
     }
+    func testExactHealthIsNotRoundedDown() {
+        XCTAssertEqual(healthPercentExact(rawMax: 4100, design: 4382)!, 93.565, accuracy: 0.001)
+        XCTAssertEqual(healthPercentExact(rawMax: 5000, design: 4382), 100)  // capped
+        XCTAssertNil(healthPercentExact(rawMax: nil, design: 4382))
+        XCTAssertNil(healthPercentExact(rawMax: 4100, design: 0))
+    }
     func testHumanize() {
         XCTAssertEqual(humanize("3:14"), "3 hr 14 min")
         XCTAssertEqual(humanize("2:00"), "2 hr")

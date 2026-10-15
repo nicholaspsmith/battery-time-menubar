@@ -2,9 +2,9 @@
 
 <p align="center"><img src="docs/mascot.png" width="160" alt="Volta, Battery Time's menu-bar character, on its app icon"></p>
 
-<p align="center"><img src="docs/animation.png" alt="Volta blinking while his charge sloshes, drinking from a cup through a bendy straw while charging, and burping when full"></p>
+<p align="center"><img src="docs/animation.png" alt="Volta blinking while his charge sloshes, drinking through a bendy straw while charging, and burping when full"></p>
 
-**Version 1.5.0** · [Changelog](https://github.com/nicholaspsmith/battery-time-menubar/releases)
+**Version 1.10.0** · [Changelog](https://github.com/nicholaspsmith/battery-time-menubar/releases)
 
 A standalone macOS menu-bar app ("Battery Time.app", built on
 [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit)) that puts the
@@ -53,14 +53,18 @@ so it stays visible.
 
 - **On battery** — time to empty; the fill turns **red** at ≤20%.
 - **Charging** — time to full. With the face on, the fill turns green and Volta
-  drinks through a red bendy straw from a big cup in front of him: the charge
-  climbs the straw, stays while he gulps and his charge ripples and bubbles,
-  then drains back for the next sip; with the face off, a **bolt** cuts through the glyph.
+  drinks through a red bendy straw: the charge climbs the straw, stays while he
+  gulps and his charge ripples and bubbles, then drains back for the next sip;
+  with the face off, a **bolt** cuts through the glyph.
 - **Plugged in, not charging** (full, or macOS holding the charge at a limit) —
   with the face on, Volta is full: eyes contentedly closed, glowing yellow.
-- **Battery health** — with the face on, Volta ages with the battery: from
-  100% health down to 80% his wrinkles (forehead, crow's feet, laugh lines)
-  slowly deepen, and at 80% or less he is a grandpa with bushy brows.
+- **Battery health** — with the face on, Volta wears out with the battery. Down
+  to 92.5% health he looks new. Below that he wrinkles (forehead, crow's feet,
+  laugh lines; to 85%), turns grandpa (bushy brows, eye bags, heavy lids; to
+  75%), cracks and gets a band-aid on it (to 65%), drips his charge (to 55%),
+  leaks a puddle (to 45%), and falls apart: the patch gives way, an eye goes ✕
+  and his terminal swings loose, until at 40% or less it has dropped into the
+  puddle. Ten years of daily use typically leaves a battery at 40–60%.
 - **High Power mode** — **blue** fill, including while charging.
 - **Low Power mode** — **yellow** fill.
 

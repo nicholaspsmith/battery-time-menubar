@@ -11,6 +11,13 @@ public func healthPercent(rawMax: Int?, design: Int?) -> Int? {
     return min(100, m * 100 / d)
 }
 
+/// Health as an unrounded percentage, for thresholds a whole number would
+/// blur (92.9 must not read as 92).
+public func healthPercentExact(rawMax: Int?, design: Int?) -> Double? {
+    guard let m = rawMax, let d = design, d > 0 else { return nil }
+    return min(100, Double(m) * 100 / Double(d))
+}
+
 public func humanize(_ hmm: String) -> String {
     let parts = hmm.split(separator: ":")
     let h = parts.count > 0 ? Int(parts[0]) ?? 0 : 0
