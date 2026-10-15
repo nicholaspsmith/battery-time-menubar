@@ -24,5 +24,6 @@ let package = Package(
             dependencies: ["BatteryTimeCore", .product(name: "StatusItemKit", package: "StatusItemKit")]
         ),
         .testTarget(name: "BatteryTimeCoreTests", dependencies: ["BatteryTimeCore"]),
+        .testTarget(name: "BatteryTimeTests", dependencies: ["BatteryTime"]),
     ]
 )
