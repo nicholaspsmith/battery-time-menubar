@@ -35,6 +35,35 @@ public enum BatteryGlyph {
         return max(0, min(1, (wornFrom - CGFloat(h)) / (wornFrom - wornOut)))
     }
 
+    /// What Volta's idle (`IdleDriver` in BatteryTimeCore) has him doing, as
+    /// drawn here. Its own small type so this file still compiles on its own:
+    /// the Menumon site's render-glyphs.sh builds it alone.
+    public struct Idle {
+        /// −1…1: every face feature shifts 2pt per unit sideways.
+        public var gaze: CGFloat
+        /// 0…1: a sigh lifts every face feature by up to 0.6pt (0.8pt when full).
+        public var breath: CGFloat
+        /// 0…1: the dots squash shut (merges with the minute cue's blink).
+        public var blink: CGFloat
+        /// 0…1: the mouth opens into a tall oval and the eyes shut with it.
+        public var yawn: CGFloat
+        /// 0…1, full only: 1 is ‿ ‿; below that the eyes open to dots.
+        public var doze: CGFloat
+        /// 0…1, charging only: 0 is ^ ^; above that the eyes open to dots.
+        public var peek: CGFloat
+        /// 0…1: lids droop by up to a third.
+        public var tired: CGFloat
+
+        public init(gaze: CGFloat = 0, breath: CGFloat = 0, blink: CGFloat = 0, yawn: CGFloat = 0,
+                    doze: CGFloat = 1, peek: CGFloat = 0, tired: CGFloat = 0) {
+            self.gaze = gaze; self.breath = breath; self.blink = blink; self.yawn = yawn
+            self.doze = doze; self.peek = peek; self.tired = tired
+        }
+
+        /// No idle: he looks exactly as he would without one.
+        public static let still = Idle()
+    }
+
     public static func image(
         pct: Int,
         charging: Bool,
@@ -48,7 +77,8 @@ public enum BatteryGlyph {
         slosh: CGFloat? = nil,
         burp: CGFloat? = nil,
         blink: CGFloat? = nil,
-        age: CGFloat = 0
+        age: CGFloat = 0,
+        idle: Idle = .still
     ) -> NSImage {
         // Animation inputs, each nil when still:
         // - sip: 0..<1 through one sip while charging (`sipPeriod`: the charge
@@ -60,6 +90,7 @@ public enum BatteryGlyph {
         // Not animated:
         // - age: 0...1, how worn the battery is (`BatteryGlyph.age(health:)`).
         //   He wrinkles, goes grandpa, cracks, leaks and falls apart.
+        // - idle: what his idle has him doing (`Idle`); `.still` when off.
         let batteryPct = max(0, min(100, pct))
         let greenFill = face && charging && fillKind == .none
         let drinking = face && charging
@@ -329,21 +360,30 @@ public enum BatteryGlyph {
                 // he drinks through a straw with happy closed eyes; plugged in
                 // but not charging he is stuffed: contented closed eyes and
                 // puffed cheeks.
-                let eye = bodyH * 0.15
+                // BMO's proportions: small dot eyes set wide, a wide shallow
+                // mouth. `eye` is a dot's height (the unit the age lines are
+                // sized in), `eyeW` its width, `eyeY` its bottom edge.
+                let eye = bodyH * 0.153, eyeW = bodyH * 0.141
                 let low = fillKind == .red
-                let eyeY = cy + bodyH * 0.08
-                let eyeXs = [cx - bodyW * 0.17, cx + bodyW * 0.17]
+                let eyeY = cy + bodyH * 0.112 - eye / 2
+                let eyeOffset = bodyW * 0.191
+                let eyeXs = [cx - eyeOffset, cx + eyeOffset]
                 let mouthLW = max(0.9, bodyH * 0.08)
                 // Shapes knocked out of (or inked over) the fill, and anything
                 // drawn on top afterwards in its own colours.
                 var strokes: [NSBezierPath] = []
                 var fills: [NSBezierPath] = []
 
-                // A once-a-minute blink closes the eyes for the middle of `blink`.
-                let shut: CGFloat = {
+                // How shut his eyes are: the minute cue's blink (closed for the
+                // middle of `blink`), the idle's blinks, and a yawn squeezing them.
+                let cueShut: CGFloat = {
                     guard let b = blink else { return 0 }
                     return b < 0.35 ? b / 0.35 : b < 0.5 ? 1 : max(0, 1 - (b - 0.5) / 0.4)
                 }()
+                var shut = max(cueShut, idle.blink, drinking ? 0 : idle.yawn)
+                // Heavy lids, as a fraction of a dot cut off its top: a
+                // grandpa's, or tired ones at low charge.
+                let lid = max(0.45 * grandpa, 0.33 * idle.tired)
                 // Falling apart, his right eye is an ✕.
                 let xEye = falling > 0.35
                 let eyesShown = xEye ? [eyeXs[0]] : eyeXs
@@ -358,7 +398,12 @@ public enum BatteryGlyph {
                     }
                 }
 
-                if drinking {
+                // His eyes are dots, except drinking (^ ^, opening to dots as
+                // he peeks) and full (‿ ‿, opening to dots as he stirs).
+                var dots = !drinking && !stuffed
+                if drinking, idle.peek > 0.15 { dots = true; shut = max(shut, 1 - idle.peek) }
+                if stuffed, idle.doze <= 0.85 { dots = true; shut = max(shut, idle.doze) }
+                if !dots && drinking {
                     for ex in eyesShown {                              // happy ^ ^
                         let e = NSBezierPath()
                         e.move(to: NSPoint(x: ex - eye * 0.8, y: eyeY + eye * 0.2))
@@ -367,7 +412,7 @@ public enum BatteryGlyph {
                         e.lineWidth = mouthLW; e.lineCapStyle = .round; e.lineJoinStyle = .round
                         strokes.append(e)
                     }
-                } else if stuffed {
+                } else if !dots && stuffed {
                     for ex in eyesShown {                              // contented ‿ ‿
                         let e = NSBezierPath()
                         e.appendArc(withCenter: NSPoint(x: ex, y: eyeY + eye * 0.9), radius: eye * 0.75,
@@ -376,7 +421,7 @@ public enum BatteryGlyph {
                         strokes.append(e)
                     }
                 } else if shut > 0.85 {
-                    for ex in eyesShown {                              // mid-blink: a line
+                    for ex in eyesShown {                              // shut: a line
                         let e = NSBezierPath()
                         e.move(to: NSPoint(x: ex - eye * 0.6, y: eyeY + eye / 2))
                         e.line(to: NSPoint(x: ex + eye * 0.6, y: eyeY + eye / 2))
@@ -385,24 +430,35 @@ public enum BatteryGlyph {
                     }
                 } else {
                     let h = eye * (1 - shut)
-                    // A grandpa's heavy lids cut his eyes flat across the top.
-                    let lid = 0.45 * grandpa
                     for ex in eyesShown {
-                        if shut == 0, lid > 0 {
+                        if lid > 0 {
+                            // a dot cut flat across the top, squashed as he
+                            // blinks (never taller than the lid allows)
                             let r = eye / 2
                             let th = asin(max(-1, min(1, (r - lid * eye) / r))) * 180 / .pi
                             let e = NSBezierPath()
-                            e.appendArc(withCenter: NSPoint(x: ex, y: eyeY + r), radius: r, startAngle: th, endAngle: 180 - th, clockwise: true)
+                            e.appendArc(withCenter: .zero, radius: r, startAngle: th, endAngle: 180 - th, clockwise: true)
                             e.close()
+                            var t = AffineTransform(translationByX: ex, byY: eyeY + r)
+                            t.scale(x: eyeW / eye, y: max(0.23, 1 - shut))
+                            e.transform(using: t)
                             fills.append(e)
                         } else {
-                            fills.append(NSBezierPath(ovalIn: NSRect(x: ex - eye/2, y: eyeY + (eye - h) / 2, width: eye, height: max(0.6, h))))
+                            fills.append(NSBezierPath(ovalIn: NSRect(x: ex - eyeW / 2, y: eyeY + (eye - h) / 2,
+                                                                     width: eyeW, height: max(0.6, h))))
                         }
                     }
                 }
 
+                // The lips round the straw and the full mouth sit at `mouthY`.
+                // BMO's mouth is 8 across, its ends 1.8 below centre.
                 let mouthY = cy - bodyH * 0.12
-                if drinking {
+                let mouthHalfW = bodyH * 0.235, mouthEndY = cy - bodyH * 0.106
+                if idle.yawn > 0.15 && !drinking {
+                    // A yawn: the mouth opens into a tall oval.
+                    let w = bodyH * 0.212, h = max(bodyH * 0.065, bodyH * 0.247 * idle.yawn)
+                    fills.append(NSBezierPath(ovalIn: NSRect(x: cx - w / 2, y: cy - bodyH * 0.07 - h, width: w, height: h)))
+                } else if drinking {
                     // Lips pursed round the straw, swelling a touch as each sip
                     // arrives.
                     let gulp: CGFloat = sip.map(gulp) ?? 0
@@ -411,8 +467,7 @@ public enum BatteryGlyph {
                 } else if stuffed {
                     // A small closed mouth. The burp opens it for a moment.
                     let b = burp ?? 0
-                    let burping = b > 0.2 && b < 0.75
-                    if burping {
+                    if b > 0.2 && b < 0.75 {
                         let r = bodyH * 0.07
                         fills.append(NSBezierPath(ovalIn: NSRect(x: cx - r, y: mouthY - r, width: r * 2, height: r * 2)))
                     } else {
@@ -421,29 +476,26 @@ public enum BatteryGlyph {
                         m.lineWidth = mouthLW; m.lineCapStyle = .round
                         strokes.append(m)
                     }
+                } else if slosh != nil {
+                    // BMO's open D grin while his charge sloshes about.
+                    let d = NSBezierPath()
+                    d.appendArc(withCenter: .zero, radius: 1, startAngle: 180, endAngle: 360)
+                    d.close()
+                    var t = AffineTransform(translationByX: cx, byY: cy - bodyH * 0.082)
+                    t.scale(x: bodyH * 0.206, y: bodyH * 0.188)
+                    d.transform(using: t)
+                    fills.append(d)
                 } else {
+                    // A smile from 60%, flat from 35%, a frown below (and
+                    // whenever the fill is red).
+                    let depth: CGFloat = low || pctValue < 35 ? -bodyH * 0.053 : pctValue >= 60 ? bodyH * 0.106 : 0
                     let mouth = NSBezierPath()
-                    let halfW = bodyH * 0.17
-                    if slosh != nil {
-                        // A grin while his charge sloshes about.
-                        mouth.appendArc(withCenter: NSPoint(x: cx, y: cy - bodyH * 0.06), radius: bodyH * 0.2, startAngle: 180, endAngle: 360, clockwise: false)
-                        mouth.close()
-                        fills.append(mouth)
-                    } else {
-                        if low {
-                            mouth.appendArc(withCenter: NSPoint(x: cx, y: cy - bodyH * 0.34), radius: bodyH * 0.2, startAngle: 35, endAngle: 145, clockwise: false)
-                        } else {
-                            // a smile from 60%, flat from 35%, a slight frown below
-                            let sag: CGFloat = pctValue >= 60 ? bodyH * 0.085 : pctValue >= 35 ? 0 : -bodyH * 0.04
-                            let endY = cy - bodyH * 0.1 - (bodyH * 0.085 - sag) / 2
-                            mouth.move(to: NSPoint(x: cx - halfW, y: endY))
-                            mouth.curve(to: NSPoint(x: cx + halfW, y: endY),
-                                        controlPoint1: NSPoint(x: cx - halfW * 0.5, y: endY - sag * 1.33),
-                                        controlPoint2: NSPoint(x: cx + halfW * 0.5, y: endY - sag * 1.33))
-                        }
-                        mouth.lineWidth = mouthLW; mouth.lineCapStyle = .round
-                        strokes.append(mouth)
-                    }
+                    mouth.move(to: NSPoint(x: cx - mouthHalfW, y: mouthEndY))
+                    mouth.curve(to: NSPoint(x: cx + mouthHalfW, y: mouthEndY),
+                                controlPoint1: NSPoint(x: cx - mouthHalfW * 0.5, y: mouthEndY - depth * 1.33),
+                                controlPoint2: NSPoint(x: cx + mouthHalfW * 0.5, y: mouthEndY - depth * 1.33))
+                    mouth.lineWidth = bodyH * 0.065; mouth.lineCapStyle = .round
+                    strokes.append(mouth)
                 }
 
                 // Age lines: forehead creases between the eyes, crow's feet at
@@ -471,7 +523,7 @@ public enum BatteryGlyph {
                     let crow = grown(0.15)
                     if crow > 0 {
                         for side in [-1.0, 1.0] as [CGFloat] {
-                            let x0 = cx + side * (bodyW * 0.17 + eye * 0.95)
+                            let x0 = cx + side * (eyeOffset + eye * 0.95)
                             let len = bodyH * 0.11 * (0.4 + 0.6 * crow)
                             line([NSPoint(x: x0, y: eyeY + eye * 0.75), NSPoint(x: x0 + side * len, y: eyeY + eye * 0.75 + len * 0.45)])
                             if crow > 0.5 {
@@ -482,7 +534,7 @@ public enum BatteryGlyph {
                     let laugh = grown(0.5)
                     if laugh > 0 {
                         for side in [-1.0, 1.0] as [CGFloat] {
-                            let x0 = cx + side * bodyH * 0.3
+                            let x0 = cx + side * (mouthHalfW + bodyH * 0.065)
                             let top = mouthY + bodyH * 0.08, len = bodyH * 0.16 * (0.4 + 0.6 * laugh)
                             line([NSPoint(x: x0, y: top), NSPoint(x: x0 + side * bodyH * 0.06, y: top - len * 0.5),
                                   NSPoint(x: x0 + side * bodyH * 0.02, y: top - len)])
@@ -507,6 +559,14 @@ public enum BatteryGlyph {
                             strokes.append(bag)
                         }
                     }
+                }
+
+                // The idle turns his face (gaze) and lifts it as he sighs.
+                // The casing's crack, band-aid and drips stay put.
+                let faceDX = idle.gaze * 2, faceDY = idle.breath * (stuffed ? 0.8 : 0.6)
+                if faceDX != 0 || faceDY != 0 {
+                    let t = AffineTransform(translationByX: faceDX, byY: faceDY)
+                    for p in fills + strokes { p.transform(using: t) }
                 }
 
                 let draw = {
@@ -554,13 +614,13 @@ public enum BatteryGlyph {
                 }
 
                 if drinking {
-                    drawStraw(mouth: NSPoint(x: cx, y: mouthY), bodyH: bodyH, sip: sip)
+                    drawStraw(mouth: NSPoint(x: cx + faceDX, y: mouthY + faceDY), bodyH: bodyH, sip: sip)
                 }
                 if stuffed, let b = burp, b > 0.25, b < 0.95 {
                     // The burp: a little bubble rising from his mouth and popping.
                     let u = (b - 0.25) / 0.7
                     let r = bodyH * (0.07 + 0.06 * u)
-                    let at = NSPoint(x: cx + bodyW * 0.08 + u * bodyW * 0.12, y: mouthY + u * bodyH * 0.45)
+                    let at = NSPoint(x: cx + faceDX + bodyW * 0.08 + u * bodyW * 0.12, y: mouthY + faceDY + u * bodyH * 0.45)
                     let bubble = NSBezierPath(ovalIn: NSRect(x: at.x - r, y: at.y - r, width: r * 2, height: r * 2))
                     bubble.lineWidth = 0.7
                     ink.withAlphaComponent(1 - u * 0.6).setStroke(); bubble.stroke()

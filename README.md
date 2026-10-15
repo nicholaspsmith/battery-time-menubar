@@ -4,7 +4,7 @@
 
 <p align="center"><img src="docs/animation.png" alt="Volta blinking while his charge sloshes, drinking through a bendy straw while charging, and burping when full"></p>
 
-**Version 1.10.0** · [Changelog](https://github.com/nicholaspsmith/battery-time-menubar/releases)
+**Version 1.13.0** · [Changelog](https://github.com/nicholaspsmith/battery-time-menubar/releases)
 
 A standalone macOS menu-bar app ("Battery Time.app", built on
 [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit)) that puts the
@@ -35,11 +35,18 @@ the menu bar's light/dark appearance.
 
 ![The menu-bar icon](docs/menubar-icon.png)
 
-By default the battery has a face — Volta (**Battery face** in the dropdown
-turns it off). On battery his mood follows the charge: a smile when full, a
-flat line around half, a slight frown below a third, a frown when low. Where
-the face crosses the empty part of the battery it is drawn in the menu-bar ink
-so it stays visible.
+By default the battery has a face: Volta, a digital face in BMO's proportions
+(Settings ▸ **Battery face** turns it off). On battery his mouth follows the
+charge: a smile from 60%, flat from 35%, a frown below that. Where the face
+crosses the empty part of the battery it is drawn in the menu-bar ink so it
+stays visible.
+
+He's never quite still. On battery he glances side to side, blinks, sighs now
+and then and yawns, more often and with drooping lids at 20% and below.
+Charging, he keeps sipping and peeks out between gulps. Full, he dozes,
+stirring every minute or so for a look round and a yawn. Settings ▸ **Animate
+Volta** turns the idle off, Reduce Motion stills him entirely, and he stops
+drawing while the display sleeps.
 
 | State | Menu bar |
 |-------|----------|
@@ -47,7 +54,7 @@ so it stays visible.
 | Low (≤20%) | ![low](screenshots/menubar-low.png) |
 | Charging | ![charging](screenshots/menubar-charging.png) |
 | Plugged in, not charging | ![full](screenshots/menubar-full.png) |
-| Worn battery (health 80% or less) | ![worn](screenshots/menubar-worn.png) |
+| Worn battery (health 60%) | ![worn](screenshots/menubar-worn.png) |
 | High Power mode | ![high power](screenshots/menubar-high-power.png) |
 | Low Power mode | ![low power](screenshots/menubar-low-power.png) |
 
@@ -57,7 +64,7 @@ so it stays visible.
   gulps and his charge ripples and bubbles, then drains back for the next sip;
   with the face off, a **bolt** cuts through the glyph.
 - **Plugged in, not charging** (full, or macOS holding the charge at a limit) —
-  with the face on, Volta is full: eyes contentedly closed, glowing yellow.
+  with the face on, Volta is full: dozing, glowing yellow.
 - **Battery health** — with the face on, Volta wears out with the battery. Down
   to 92.5% health he looks new. Below that he wrinkles (forehead, crow's feet,
   laugh lines; to 85%), turns grandpa (bushy brows, eye bags, heavy lids; to
@@ -68,12 +75,12 @@ so it stays visible.
 - **High Power mode** — **blue** fill, including while charging.
 - **Low Power mode** — **yellow** fill.
 
-Now and then Volta blinks while his charge sloshes from side to side, or,
-when stuffed, burps. When several Menumon mascots are running they take turns,
+Twice a minute Volta blinks and grins while his charge sloshes from side to
+side, or, when stuffed, burps. When several Menumon mascots are running they take turns,
 a second apart: Archimedes (Claude Usage), Menu Pimp (Mac Daddy), Carol
 (SoundChain), Iguanamous (VPN & DNS), Armonitor (Monitor Lizard), then Volta,
-counting only the ones that are running. The animation and the sip are
-skipped when Reduce Motion is on.
+counting only the ones that are running. His idle pauses while it plays. All
+of his motion stops when Reduce Motion is on.
 
 Time details:
 

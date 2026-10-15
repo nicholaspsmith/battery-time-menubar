@@ -49,11 +49,19 @@ final class App: NSObject, NSApplicationDelegate {
         self?.rerender()
     }, completion: { [weak self] in
         self?.minuteT = nil
+        self?.idle.setCue(playing: false, at: ProcessInfo.processInfo.systemUptime)
         self?.rerender()
     })
     private static let sipPeriod = BatteryGlyph.sipPeriod
-    private var sipTimer: Timer?
-    private var sipStarted = Date()
+    /// One clock for all of Volta's motion, his idle and the sip loop: a
+    /// one-shot timer re-armed after every draw while something still moves.
+    private var animTimer: Timer?
+    private var idle = IdleDriver(seed: UInt64.random(in: 0...UInt64.max), mood: .awake(tired: false),
+                                  at: ProcessInfo.processInfo.systemUptime)
+    /// When the current sip loop began; nil while he isn't drinking.
+    private var sipStarted: Date?
+    private var displayAsleep = false
+    private var sessionActive = true
     private var latest: Snapshot?
 
     // 24h cache: recomputed off the poll thread, at most every 10 min.
@@ -87,11 +95,29 @@ final class App: NSObject, NSApplicationDelegate {
         watcher.start()
 
         minuteCue = MinuteCue { [weak self] in
-            guard let self, DisplayPrefs.showFace, DisplayPrefs.showIcon,
-                  self.latest?.reading.state != .charging else { return }
+            guard let self, minuteCueMayPlay(faceShown: DisplayPrefs.showFace, iconShown: DisplayPrefs.showIcon,
+                                             charging: self.latest?.reading.state == .charging,
+                                             displayAsleep: self.displayAsleep, sessionActive: self.sessionActive) else { return }
+            self.idle.setCue(playing: true, at: ProcessInfo.processInfo.systemUptime)
             self.minuteAnimation.start()
         }
         minuteCue.start()
+
+        // Nobody sees the menu bar while the display sleeps or another user
+        // has the session, so Volta stops drawing until they're back.
+        let ws = NSWorkspace.shared.notificationCenter
+        ws.addObserver(forName: NSWorkspace.screensDidSleepNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.displayAsleep = true; self?.rerender()
+        }
+        ws.addObserver(forName: NSWorkspace.screensDidWakeNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.displayAsleep = false; self?.rerender()
+        }
+        ws.addObserver(forName: NSWorkspace.sessionDidResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.sessionActive = false; self?.rerender()
+        }
+        ws.addObserver(forName: NSWorkspace.sessionDidBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.sessionActive = true; self?.rerender()
+        }
     }
 
     // MARK: Poll
@@ -200,7 +226,14 @@ final class App: NSObject, NSApplicationDelegate {
             }
             let face = DisplayPrefs.showFace
             let stuffed = face && snap.reading.plugged && !isCharging
-            updateSipLoop(face && isCharging)
+            let now = ProcessInfo.processInfo.systemUptime
+            let moving = voltaMayMove(faceShown: face,
+                                      reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
+                                      displayAsleep: displayAsleep, sessionActive: sessionActive)
+            let drinking = moving && isCharging
+            if drinking { if sipStarted == nil { sipStarted = Date() } } else { sipStarted = nil }
+            let idling = moving && DisplayPrefs.animateFace
+            idle.setMood(idleMood(charging: isCharging, plugged: snap.reading.plugged, pct: pct!), at: now)
             let minute = minuteT.map { CGFloat($0 / Self.minuteDuration) }
             let image = BatteryGlyph.image(
                 pct: pct!,
@@ -211,21 +244,26 @@ final class App: NSObject, NSApplicationDelegate {
                 ink: ink,
                 fill: fill,
                 face: face,
-                sip: sipTimer == nil ? nil : CGFloat(Date().timeIntervalSince(sipStarted)
-                    .truncatingRemainder(dividingBy: Self.sipPeriod) / Self.sipPeriod),
+                sip: sipStarted.map { CGFloat(Date().timeIntervalSince($0)
+                    .truncatingRemainder(dividingBy: Self.sipPeriod) / Self.sipPeriod) },
                 slosh: stuffed ? nil : minute,
                 burp: stuffed ? minute : nil,
                 // The blink takes the first half second of the minute's turn.
                 blink: stuffed ? nil : minuteT.flatMap { $0 < 0.5 ? CGFloat($0 / 0.5) : nil },
-                age: BatteryGlyph.age(health: healthPercentExact(rawMax: snap.ioreg.rawMaxCapacity, design: snap.ioreg.designCapacity))
+                age: BatteryGlyph.age(health: healthPercentExact(rawMax: snap.ioreg.rawMaxCapacity, design: snap.ioreg.designCapacity)),
+                idle: idling ? BatteryGlyph.Idle(idle.pose(at: now)) : .still
             )
             controller.setIcon(image)
+            scheduleAnimation(after: animationDelay(idleTick: idling ? idle.nextTick(after: now) : nil,
+                                                    drinking: drinking))
         } else {
             // text fallback: % (stands in for the glyph) then time
             var parts: [String] = []
             if let p = pct, showPct || showIcon { parts.append("\(p)%") }
             if showTime, !snap.mbTime.isEmpty { parts.append(snap.mbTime) }
             let text = parts.isEmpty ? "--:--" : parts.joined(separator: " ")
+            sipStarted = nil
+            scheduleAnimation(after: nil)
             controller.setTitle(text, warn: false)
         }
     }
@@ -316,6 +354,8 @@ final class App: NSObject, NSApplicationDelegate {
             self.addToggle(sub, title: "Battery face", on: DisplayPrefs.showFace) { DisplayPrefs.showFace = $0 }
             self.addToggle(sub, title: "Percentage", on: DisplayPrefs.showPct) { DisplayPrefs.showPct = $0 }
             self.addToggle(sub, title: "Time remaining", on: DisplayPrefs.showTime) { DisplayPrefs.showTime = $0 }
+            sub.addItem(.separator())
+            self.addToggle(sub, title: "Animate Volta", on: DisplayPrefs.animateFace) { DisplayPrefs.animateFace = $0 }
             if hasTemp {
                 sub.addItem(.separator())
                 let toC = DisplayPrefs.tempUnit == "C"
@@ -360,20 +400,20 @@ final class App: NSObject, NSApplicationDelegate {
 
     private func rerender() { if let s = latest { render(s) } }
 
-    /// The sip loop runs only while there is a straw to sip through, and not
-    /// at all under Reduce Motion. A dozen frames a second is plenty for
-    /// charge climbing a straw.
-    private func updateSipLoop(_ drinking: Bool) {
-        let wanted = drinking && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-        if wanted, sipTimer == nil {
-            sipStarted = Date()
-            let t = Timer(timeInterval: 1.0 / 12, repeats: true) { [weak self] _ in self?.rerender() }
-            RunLoop.main.add(t, forMode: .common)
-            sipTimer = t
-        } else if !wanted, let t = sipTimer {
-            t.invalidate()
-            sipTimer = nil
+    /// Re-arms Volta's clock to draw again after `delay`, or stops it (nil),
+    /// with at most 10 ms of slack: macOS fires at the far end of a timer's
+    /// tolerance, and a blink is over in 0.18 s.
+    private func scheduleAnimation(after delay: TimeInterval?) {
+        animTimer?.invalidate()
+        animTimer = nil
+        guard let delay else { return }
+        let t = Timer(timeInterval: delay, repeats: false) { [weak self] _ in
+            self?.animTimer = nil
+            self?.rerender()
         }
+        t.tolerance = timerTolerance(for: delay)
+        RunLoop.main.add(t, forMode: .common)
+        animTimer = t
     }
 
     @objc private func openSettings() {
@@ -525,3 +565,10 @@ app.setActivationPolicy(.accessory)
 let delegate = App()
 app.delegate = delegate
 app.run()
+
+private extension BatteryGlyph.Idle {
+    init(_ p: IdlePose) {
+        self.init(gaze: CGFloat(p.gaze), breath: CGFloat(p.breath), blink: CGFloat(p.blink), yawn: CGFloat(p.yawn),
+                  doze: CGFloat(p.doze), peek: CGFloat(p.peek), tired: CGFloat(p.tired))
+    }
+}
