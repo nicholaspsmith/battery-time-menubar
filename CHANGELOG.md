@@ -8,6 +8,11 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.23.2] - 2026-11-03
+
+- Updated StatusItemKit to 0.38.3
+- Fixed a bug where clicking a folding menu heading did nothing.
+
 ## [1.23.1] - 2026-11-03
 
 - The README's version line now matches the release, and the 1.23.0 notes below say what that release actually changed.
