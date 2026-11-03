@@ -63,7 +63,7 @@ final class App: NSObject, NSApplicationDelegate {
     private var displayAsleep = false
     private var sessionActive = true
     private var latest: Snapshot?
-    private var preferences: PreferencesWindowController?
+    private lazy var preferences = makePreferences { [weak self] in self?.rerender() }
 
     // 24h cache: recomputed off the poll thread, at most every 10 min.
     private var usage24h: Usage24h?
@@ -288,22 +288,20 @@ final class App: NSObject, NSApplicationDelegate {
                 .foregroundColor: NSColor.secondaryLabelColor,
             ]
         )
+        header.isEnabled = false
         menu.addItem(header)
         let pmSrc = plugged ? "-c" : "-b"
-        addModeItem(menu, value: 0, label: "Automatic", current: snap.powermode, src: pmSrc)
-        addModeItem(menu, value: 1, label: "Low Power", current: snap.powermode, src: pmSrc)
-        addModeItem(menu, value: 2, label: "High Power", current: snap.powermode, src: pmSrc)
+        // A pick-one set: choosing one moves the tick and leaves the menu open.
+        KeepOpenMenu.pickOne([
+            addModeItem(menu, value: 0, label: "Automatic", current: snap.powermode, src: pmSrc),
+            addModeItem(menu, value: 1, label: "Low Power", current: snap.powermode, src: pmSrc),
+            addModeItem(menu, value: 2, label: "High Power", current: snap.powermode, src: pmSrc),
+        ])
 
         menu.addItem(.separator())
 
         // --- Battery stats, folded under one heading (folded until opened) ---
-        // Read-only rows, greyed. Disabled by hand: rows inserted when the
-        // heading unfolds miss the validation that greys them on opening.
-        func stat(_ title: String) -> NSMenuItem {
-            let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
-            item.isEnabled = false
-            return item
-        }
+        let stat = InfoMenuItem.make
         var stats: [NSMenuItem] = []
         let pctStr = snap.reading.percent.map { "\($0)%" } ?? "n/a"
         stats.append(stat("Battery: \(pctStr)"))
@@ -328,7 +326,7 @@ final class App: NSObject, NSApplicationDelegate {
             stats.append(stat(lines.0))
             stats.append(stat(lines.1))
         }
-        MenuSection.add(title: "Battery Stats", key: "batteryStats", items: stats, to: menu)
+        FoldingSection.add(title: "Battery Stats", key: "batteryStats", items: stats, to: menu)
 
         // --- Battery Life Tips (only when a trigger fires) ---
         let tipsUsage = snap.usage ?? Usage24h(batterySeconds: 0, acSeconds: 0,
@@ -342,7 +340,7 @@ final class App: NSObject, NSApplicationDelegate {
         let tips = freshTips(firing, seen: TipsSeen.value)
         if !tips.isEmpty {
             menu.addItem(.separator())
-            let item = NSMenuItem(title: "Battery Life Tips", action: #selector(showTips(_:)), keyEquivalent: "")
+            let item = NSMenuItem(title: "Battery Life Tips…", action: #selector(showTips(_:)), keyEquivalent: "")
             item.target = self
             item.representedObject = tips.map(\.kind.rawValue)
             menu.addItem(item)
@@ -354,37 +352,39 @@ final class App: NSObject, NSApplicationDelegate {
         settings.target = self
         menu.addItem(settings)
 
-        // --- Preferences… (the window that replaced the Settings submenu) + Quit ---
-        menu.addItem(.separator())
-        let prefs = NSMenuItem(title: "Preferences…", action: #selector(openPreferences), keyEquivalent: ",")
-        prefs.target = self
-        menu.addItem(prefs)
-        let quit = NSMenuItem(title: "Quit Battery Time", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
-        quit.target = NSApp
-        menu.addItem(quit)
+        // --- Preferences… (⌘,) + Quit ---
+        PreferencesMenu.addFooter(to: menu, appName: "Battery Time") { [weak self] in self?.preferences.show() }
+        // Every option leaves the menu open; Quit and the "…" items close it.
+        KeepOpenMenu.apply(to: menu.items)
     }
 
-    private func addModeItem(_ menu: NSMenu, value: Int, label: String, current: Int?, src: String) {
+    @discardableResult
+    private func addModeItem(_ menu: NSMenu, value: Int, label: String, current: Int?, src: String) -> NSMenuItem {
         let item = NSMenuItem(title: label, action: #selector(setPowerMode(_:)), keyEquivalent: "")
         item.target = self
         item.state = (current == value) ? .on : .off
         item.representedObject = [src, String(value)]
         menu.addItem(item)
+        return item
     }
 
     // MARK: Menu actions
 
     @objc private func setPowerMode(_ sender: NSMenuItem) {
         guard let pair = sender.representedObject as? [String], pair.count == 2 else { return }
-        _ = Shell.run(kSudo, [kPmset, pair[0], "powermode", pair[1]])
-        poll()
-    }
-
-    @objc private func openPreferences() {
-        if preferences == nil {
-            preferences = PreferencesWindowController(model: PreferencesModel { [weak self] in self?.rerender() })
+        if Shell.run(kSudo, [kPmset, pair[0], "powermode", pair[1]]) == nil {
+            // pmset refused (no sudoers rule): the menu stays open and has
+            // already ticked the choice, so put the tick back where it was.
+            let current = latest?.powermode
+            DispatchQueue.main.async {
+                for item in sender.menu?.items ?? [] where item.action == #selector(self.setPowerMode(_:)) {
+                    let value = (item.representedObject as? [String])?.last.flatMap(Int.init)
+                    item.state = value == current ? .on : .off
+                }
+                sender.menu?.items.compactMap { $0.view as? KeepOpenMenuRow }.forEach { $0.updateColors() }
+            }
         }
-        preferences?.show()
+        poll()
     }
 
     private func rerender() { if let s = latest { render(s) } }

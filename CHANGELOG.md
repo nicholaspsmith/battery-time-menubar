@@ -8,6 +8,12 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.21.0] - 2026-11-03
+
+- Picking an Energy Mode now leaves the menu open, with the tick moving to your choice (or staying put if macOS refuses the change).
+- "Battery Life Tips" is now "Battery Life Tips…", since it opens a dialog; it and Open Battery Settings… still close the menu.
+- The Battery Stats heading, its rows and the Preferences window now use the shared Menumon components, so they look and behave like the other apps'.
+
 ## [1.20.0] - 2026-11-03
 
 - The battery stats (charge, time left, health, power, adapter, temperature and the 24-hour usage) now fold under a **Battery Stats** heading, folded at first. Its chevron points down while folded and up while open, clicking it keeps the menu open, and it remembers how you left it.
