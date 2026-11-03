@@ -8,12 +8,17 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.23.0] - 2026-11-03
+
+- Fixed alignment of status dots in keep-open menu rows so titles line up with other items.
+- Prevented long keep-open menu rows with status dots from being clipped.
+- Replaced the Settings submenu with a standard Preferences window (⌘,) featuring grouped settings, a Start at Login toggle, and an icon picker.
+- Added collapsible sections to the menu, allowing you to fold away groups of options.
+- Ensured informational menu rows always appear in grey text for better readability.
+
 ## [1.22.0] - 2026-11-03
 
-- Keep-open menu rows with a status dot are no longer clipped at the end, ensuring the full title and image are visible.
-- The Settings submenu has been replaced by a standard Preferences window (accessible via ⌘,) featuring grouped options, a login toggle, and an icon picker.
-- Menus now stay open when selecting options (except for Quit and "…" items), and new collapsible section headings allow you to hide or show groups of menu items.
-- Read-only information rows in the menu are now always displayed in grey text for better visual distinction.
+- Removed Battery Life Tips. In practice it only ever repeated the same low-charge advice; the other tips (running hot, hours at full charge, a high cycle count) rarely apply.
 
 ## [1.21.0] - 2026-11-03
 
