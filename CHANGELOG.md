@@ -8,6 +8,12 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.22.0] - 2026-11-03
+
+- Preferences are now in a dedicated window (⌘,) with a grouped layout, a Start at Login toggle, and an icon picker, replacing the previous Settings submenu.
+- Menus stay open after selecting an option (except for Quit and items ending in "…"), and sections can be collapsed or expanded with a chevron.
+- Read-only information rows in the menu are now always displayed in grey text.
+
 ## [1.21.0] - 2026-11-03
 
 - Picking an Energy Mode now leaves the menu open, with the tick moving to your choice (or staying put if macOS refuses the change).
