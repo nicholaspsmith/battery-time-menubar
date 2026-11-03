@@ -57,3 +57,12 @@ enum DisplayPrefs {
         set { defaults.set(newValue == "F" ? "F" : "C", forKey: kTempUnit) }
     }
 }
+
+/// How many times each Battery Life Tip has been shown, by `TipKind`.
+enum TipsSeen {
+    private static let key = "tipsSeen"
+    static var value: [String: Int] {
+        get { UserDefaults.standard.dictionary(forKey: key) as? [String: Int] ?? [:] }
+        set { UserDefaults.standard.set(newValue, forKey: key) }
+    }
+}
