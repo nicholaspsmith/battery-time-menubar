@@ -25,34 +25,4 @@ final class Usage24hTests: XCTestCase {
         XCTAssertEqual(u.acSeconds, 3600)
         XCTAssertEqual(u.minCharge, 60)
     }
-    func testTipsLowDischargeAndCycles() {
-        let u = Usage24h(batterySeconds: 0, acSeconds: 0, minCharge: 12, highACSeconds: 0, lowEpisodes: 1)
-        let tips = batteryTips(usage: u, temperatureCentiC: nil, cycleCount: 850)
-        XCTAssertTrue(tips.contains { $0.contains("12%") })          // deep-discharge tip
-        XCTAssertTrue(tips.contains { $0.contains("Cycle count 850") }) // cycle tip
-    }
-
-    func testATipRetiresAfterItsThirdShowing() {
-        let u = Usage24h(batterySeconds: 0, acSeconds: 0, minCharge: 12, highACSeconds: 0, lowEpisodes: 1)
-        let tips = batteryTipList(usage: u, temperatureCentiC: nil, cycleCount: nil)
-        var seen: [String: Int] = [:]
-        for _ in 0..<3 {
-            XCTAssertEqual(freshTips(tips, seen: seen).map(\.kind), [.deepDischarge])
-            seen = markTipsShown(freshTips(tips, seen: seen), seen: seen)
-        }
-        XCTAssertTrue(freshTips(tips, seen: seen).isEmpty)
-    }
-    func testAnotherTipStillShowsOnceOneRetires() {
-        let u = Usage24h(batterySeconds: 0, acSeconds: 0, minCharge: 12, highACSeconds: 0, lowEpisodes: 1)
-        let tips = batteryTipList(usage: u, temperatureCentiC: 3600, cycleCount: nil)
-        let seen = ["deepDischarge": 3]
-        XCTAssertEqual(freshTips(tips, seen: seen).map(\.kind), [.heat])
-    }
-    func testATipIsNewAgainOnceItsConditionClears() {
-        let seen = ["deepDischarge": 3, "heat": 1]
-        let hot = batteryTipList(usage: Usage24h(batterySeconds: 0, acSeconds: 0, minCharge: 80,
-                                                 highACSeconds: 0, lowEpisodes: 0),
-                                 temperatureCentiC: 3600, cycleCount: nil)
-        XCTAssertEqual(pruneSeenTips(seen, firing: hot), ["heat": 1])
-    }
 }

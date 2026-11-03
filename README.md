@@ -4,7 +4,7 @@
 
 <p align="center"><img src="docs/animation.png" alt="Volta blinking while his charge sloshes, drinking through a bendy straw while charging, and burping when full"></p>
 
-**Version 1.21.0** · [Changelog](https://github.com/nicholaspsmith/battery-time-menubar/releases)
+**Version 1.22.0** · [Changelog](https://github.com/nicholaspsmith/battery-time-menubar/releases)
 
 A standalone macOS menu-bar app ("Battery Time.app", built on
 [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit)) that puts the
@@ -109,10 +109,6 @@ Time details:
   - 24-hour usage — time on battery vs plugged in, parsed from `pmset -g log`.
     That is slow, so it is recomputed in the background at most every 10 minutes
     and never blocks a refresh
-- **Battery Life Tips…** — shown only when a trigger fires (deep discharges,
-  prolonged high charge, running warm, or cycle count near rated life); opens a
-  dialog with the advice. A tip retires after its third showing and is new
-  again once its condition clears; with nothing new to say the item hides
 - **Open Battery Settings…** — opens System Settings ▸ Battery
 - **Preferences…** (⌘,) — StatusItemKit's shared Preferences window, as in Mac Daddy: Menu Bar Shows (Battery
   icon, Battery face, Percentage, Time remaining), Animate Volta, Temperature
