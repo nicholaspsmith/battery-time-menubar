@@ -8,6 +8,12 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.20.0] - 2026-11-03
+
+- The battery stats (charge, time left, health, power, adapter, temperature and the 24-hour usage) now fold under a **Battery Stats** heading, folded at first. Its chevron points down while folded and up while open, clicking it keeps the menu open, and it remembers how you left it.
+- Settings have moved from a submenu to a **Preferences…** window (⌘,), as in Mac Daddy: what the menu bar shows, Animate Volta, the temperature unit, Start at Login and the version.
+- Battery Life Tips no longer repeats the same advice: a tip retires after you have seen it three times and comes back only once its condition has cleared and returned. With nothing new to say, the menu item hides.
+
 ## [1.19.1] - 2026-11-02
 
 - The battery level indicator now remains visible in grey when the monitor is offline or permissions are missing, instead of disappearing entirely.

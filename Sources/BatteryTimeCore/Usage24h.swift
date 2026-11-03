@@ -87,22 +87,66 @@ public func parsePmsetLog(_ log: String, now: Date) -> Usage24h {
                     minCharge: minCharge, highACSeconds: hi, lowEpisodes: lo)
 }
 
-/// Battery-longevity tips (plugin lines 293-307). Returns the tip strings
-/// (without the leading 💡), shown only when a trigger fires.
-public func batteryTips(usage u: Usage24h, temperatureCentiC: Int?, cycleCount: Int?) -> [String] {
-    var tips: [String] = []
+/// What a battery tip is about. The raw value keys its seen count.
+public enum TipKind: String, CaseIterable {
+    case deepDischarge, highCharge, heat, cycles
+}
+
+public struct BatteryTip: Equatable {
+    public let kind: TipKind
+    public let text: String
+}
+
+/// Battery-longevity tips (plugin lines 293-307), shown only when a trigger
+/// fires. The text has no leading 💡.
+public func batteryTipList(usage u: Usage24h, temperatureCentiC: Int?, cycleCount: Int?) -> [BatteryTip] {
+    var tips: [BatteryTip] = []
     if let mc = u.minCharge, mc >= 0, (mc <= 15 || u.lowEpisodes >= 2) {
         let ep = u.lowEpisodes >= 2 ? " (\(u.lowEpisodes)× under 20%)" : ""
-        tips.append("You dropped to \(mc)% recently\(ep). Recharge before ~20% — deep discharges add wear.")
+        tips.append(BatteryTip(kind: .deepDischarge,
+                               text: "You dropped to \(mc)% recently\(ep). Recharge before ~20% — deep discharges add wear."))
     }
     if u.highACSeconds >= 28800 {
-        tips.append("Plugged in near full \(u.highACSeconds / 3600)h today. Sitting at high charge ages Li-ion — enable Optimized Charging / 80% limit.")
+        tips.append(BatteryTip(kind: .highCharge,
+                               text: "Plugged in near full \(u.highACSeconds / 3600)h today. Sitting at high charge ages Li-ion — enable Optimized Charging / 80% limit."))
     }
     if let t = temperatureCentiC, t / 100 >= 35 {
-        tips.append("Battery is \(t / 100)°C now. Heat is the top cause of aging — improve airflow, ease load while charging.")
+        tips.append(BatteryTip(kind: .heat,
+                               text: "Battery is \(t / 100)°C now. Heat is the top cause of aging — improve airflow, ease load while charging."))
     }
     if let c = cycleCount, c >= 800 {
-        tips.append("Cycle count \(c) of ~1000 rated — nearing rated life; some capacity loss is expected.")
+        tips.append(BatteryTip(kind: .cycles,
+                               text: "Cycle count \(c) of ~1000 rated — nearing rated life; some capacity loss is expected."))
     }
     return tips
+}
+
+/// The tip strings alone.
+public func batteryTips(usage u: Usage24h, temperatureCentiC: Int?, cycleCount: Int?) -> [String] {
+    batteryTipList(usage: u, temperatureCentiC: temperatureCentiC, cycleCount: cycleCount).map(\.text)
+}
+
+/// How many times a tip may be shown before it retires: after the third
+/// showing the same advice is noise.
+public let tipShowLimit = 3
+
+/// Forgets the seen count of every kind that is not firing now, so a tip
+/// whose condition cleared and came back is new again. Call it only when the
+/// 24 h usage is known: without it the usage tips look cleared when they are
+/// merely not computed yet.
+public func pruneSeenTips(_ seen: [String: Int], firing: [BatteryTip]) -> [String: Int] {
+    let live = Set(firing.map(\.kind.rawValue))
+    return seen.filter { live.contains($0.key) }
+}
+
+/// The firing tips not yet shown `tipShowLimit` times.
+public func freshTips(_ tips: [BatteryTip], seen: [String: Int]) -> [BatteryTip] {
+    tips.filter { seen[$0.kind.rawValue, default: 0] < tipShowLimit }
+}
+
+/// `seen` after showing `tips` once more.
+public func markTipsShown(_ tips: [BatteryTip], seen: [String: Int]) -> [String: Int] {
+    var out = seen
+    for t in tips { out[t.kind.rawValue, default: 0] += 1 }
+    return out
 }

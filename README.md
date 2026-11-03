@@ -4,7 +4,7 @@
 
 <p align="center"><img src="docs/animation.png" alt="Volta blinking while his charge sloshes, drinking through a bendy straw while charging, and burping when full"></p>
 
-**Version 1.19.0** · [Changelog](https://github.com/nicholaspsmith/battery-time-menubar/releases)
+**Version 1.20.0** · [Changelog](https://github.com/nicholaspsmith/battery-time-menubar/releases)
 
 A standalone macOS menu-bar app ("Battery Time.app", built on
 [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit)) that puts the
@@ -36,7 +36,7 @@ the menu bar's light/dark appearance.
 ![The menu-bar icon](docs/menubar-icon.png)
 
 By default the battery has a face: Volta, a digital face in BMO's proportions
-(Settings ▸ **Battery face** turns it off). On battery his mouth follows the
+(Preferences ▸ **Battery face** turns it off). On battery his mouth follows the
 charge: a smile from 60%, flat from 35%, a frown below that. Where the face
 crosses the empty part of the battery it is drawn in the menu-bar ink so it
 stays visible.
@@ -44,7 +44,7 @@ stays visible.
 He's never quite still. On battery he glances side to side, blinks, sighs now
 and then and yawns, more often and with drooping lids at 20% and below.
 Charging, he keeps sipping and peeks out between gulps. Full, he dozes,
-stirring every minute or so for a look round and a yawn. Settings ▸ **Animate
+stirring every minute or so for a look round and a yawn. Preferences ▸ **Animate
 Volta** turns the idle off, Reduce Motion stills him entirely, and he stops
 drawing while the display sleeps.
 
@@ -89,7 +89,7 @@ Time details:
   projects its own from the measured draw, capped at a nominal ~12 W so a
   near-idle draw cannot show 20h+. Without either, it shows `--:--`.
 - Whole hours render compactly as `8h`.
-- The icon, percentage and time toggle independently (Settings ▸ Menu bar shows…). With
+- The icon, percentage and time toggle independently (Preferences ▸ Menu Bar Shows). With
   the icon off it shows plain text (`pct% time`). It always shows something, so
   it keeps its position under menu-bar managers.
 
@@ -98,21 +98,24 @@ Time details:
 - **Energy Mode** — Automatic / Low Power / High Power, the active one
   checkmarked; selecting one runs `pmset powermode` (see
   [Energy mode selector](#energy-mode-selector-one-time-setup))
-- Battery percentage and a status line (`3 hr 14 min until empty`,
-  `Charging - 1 hr 20 min until full`, `Fully charged`, …)
-- From one `ioreg` call: health and cycle count, live power draw (V×A), adapter
-  wattage, temperature (unit picked in Settings ▸ Switch to °F/°C), voltage and raw charge (mAh)
-- 24-hour usage — time on battery vs plugged in, parsed from `pmset -g log`.
-  That is slow, so it is recomputed in the background at most every 10 minutes
-  and never blocks a refresh
+- **Battery Stats** — a heading that folds the stats away (folded at first;
+  the chevron points down folded, up open, and the menu stays open when you
+  click it; it remembers which way you left it):
+  - Battery percentage and a status line (`3 hr 14 min until empty`,
+    `Charging - 1 hr 20 min until full`, `Fully charged`, …)
+  - From one `ioreg` call: health and cycle count, live power draw (V×A), adapter
+    wattage, temperature (unit picked in Preferences), voltage and raw charge (mAh)
+  - 24-hour usage — time on battery vs plugged in, parsed from `pmset -g log`.
+    That is slow, so it is recomputed in the background at most every 10 minutes
+    and never blocks a refresh
 - **Battery Life Tips** — shown only when a trigger fires (deep discharges,
   prolonged high charge, running warm, or cycle count near rated life); opens a
-  dialog with the advice
+  dialog with the advice. A tip retires after its third showing and is new
+  again once its condition clears; with nothing new to say the item hides
 - **Open Battery Settings…** — opens System Settings ▸ Battery
-- **Settings ▸**
-  - **Menu bar shows…** — Battery icon, Battery face, Percentage, Time remaining
-  - **Switch to °F / °C** — temperature unit (only when the battery reports a temperature)
-  - **Start at Login**, then the version (from StatusItemKit's `SettingsMenu`)
+- **Preferences…** (⌘,) — a window, as in Mac Daddy: Menu Bar Shows (Battery
+  icon, Battery face, Percentage, Time remaining), Animate Volta, Temperature
+  (°C / °F), Start at Login, and the version. Esc or ⌘W closes it
 - **Quit Battery Time** (⌘Q)
 
 ## How it works
@@ -140,7 +143,7 @@ Use **one** of these, not several, or it may start twice:
 
   A bare `--login` or `--login status` only reports the state. `./install.sh`
   asks whether to do this when run in a terminal.
-- **In-app toggle** — the menu's **Settings ▸ Start at Login** item (`SMAppService`, not a
+- **In-app toggle** — **Preferences ▸ Start at Login** (`SMAppService`, not a
   LaunchAgent). macOS requires the app to live in `/Applications` or
   `~/Applications`, which `install.sh`'s symlink satisfies.
 - **macOS Login Items** — System Settings → General → Login Items.

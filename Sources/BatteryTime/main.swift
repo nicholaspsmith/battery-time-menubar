@@ -63,6 +63,7 @@ final class App: NSObject, NSApplicationDelegate {
     private var displayAsleep = false
     private var sessionActive = true
     private var latest: Snapshot?
+    private var preferences: PreferencesWindowController?
 
     // 24h cache: recomputed off the poll thread, at most every 10 min.
     private var usage24h: Usage24h?
@@ -295,48 +296,55 @@ final class App: NSObject, NSApplicationDelegate {
 
         menu.addItem(.separator())
 
-        // --- Battery + detail ---
+        // --- Battery stats, folded under one heading (folded until opened) ---
+        // Read-only rows, greyed. Disabled by hand: rows inserted when the
+        // heading unfolds miss the validation that greys them on opening.
+        func stat(_ title: String) -> NSMenuItem {
+            let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+            item.isEnabled = false
+            return item
+        }
+        var stats: [NSMenuItem] = []
         let pctStr = snap.reading.percent.map { "\($0)%" } ?? "n/a"
-        menu.addItem(NSMenuItem(title: "Battery: \(pctStr)", action: nil, keyEquivalent: ""))
-        menu.addItem(NSMenuItem(title: detailLine(snap), action: nil, keyEquivalent: ""))
-
+        stats.append(stat("Battery: \(pctStr)"))
+        stats.append(stat(detailLine(snap)))
         // Health
         if let h = healthPercent(rawMax: io.rawMaxCapacity, design: io.designCapacity) {
             let cyc = io.cycleCount.map { " (\($0) cycles)" } ?? ""
-            menu.addItem(NSMenuItem(title: "Health: \(h)%\(cyc)", action: nil, keyEquivalent: ""))
+            stats.append(stat("Health: \(h)%\(cyc)"))
         }
         // Power (W)
-        if let pl = powerLine(snap) {
-            menu.addItem(NSMenuItem(title: pl, action: nil, keyEquivalent: ""))
-        }
+        if let pl = powerLine(snap) { stats.append(stat(pl)) }
         // Adapter
         if plugged, io.adapterName != nil || io.adapterWatts != nil {
             let name = io.adapterName ?? io.adapterWatts.map { "\($0) W" } ?? ""
-            menu.addItem(NSMenuItem(title: "Adapter: \(name)", action: nil, keyEquivalent: ""))
+            stats.append(stat("Adapter: \(name)"))
         }
         // extras: temp · V · mAh
-        if let extras = extrasLine(snap), !extras.isEmpty {
-            menu.addItem(NSMenuItem(title: extras, action: nil, keyEquivalent: ""))
-        }
-
-        // --- 24h usage ---
+        if let extras = extrasLine(snap), !extras.isEmpty { stats.append(stat(extras)) }
+        // 24h usage
         if let usage = snap.usage, let lines = usageLines(usage) {
-            menu.addItem(.separator())
-            menu.addItem(NSMenuItem(title: lines.0, action: nil, keyEquivalent: ""))
-            menu.addItem(NSMenuItem(title: lines.1, action: nil, keyEquivalent: ""))
+            stats.append(.separator())
+            stats.append(stat(lines.0))
+            stats.append(stat(lines.1))
         }
+        MenuSection.add(title: "Battery Stats", key: "batteryStats", items: stats, to: menu)
 
         // --- Battery Life Tips (only when a trigger fires) ---
         let tipsUsage = snap.usage ?? Usage24h(batterySeconds: 0, acSeconds: 0,
                                                minCharge: nil, highACSeconds: 0, lowEpisodes: 0)
-        let tips = batteryTips(usage: tipsUsage,
-                               temperatureCentiC: io.temperatureCentiC,
-                               cycleCount: io.cycleCount)
+        let firing = batteryTipList(usage: tipsUsage,
+                                    temperatureCentiC: io.temperatureCentiC,
+                                    cycleCount: io.cycleCount)
+        // A tip retires after its third showing; it is new again once its
+        // condition has cleared. Only prune once the 24 h usage is known.
+        if snap.usage != nil { TipsSeen.value = pruneSeenTips(TipsSeen.value, firing: firing) }
+        let tips = freshTips(firing, seen: TipsSeen.value)
         if !tips.isEmpty {
             menu.addItem(.separator())
             let item = NSMenuItem(title: "Battery Life Tips", action: #selector(showTips(_:)), keyEquivalent: "")
             item.target = self
-            item.representedObject = tips
+            item.representedObject = tips.map(\.kind.rawValue)
             menu.addItem(item)
         }
 
@@ -346,25 +354,14 @@ final class App: NSObject, NSApplicationDelegate {
         settings.target = self
         menu.addItem(settings)
 
-        // --- Settings ▸ (display toggles, temperature unit) + Quit ---
-        let hasTemp = io.temperatureCentiC != nil
-        SettingsMenu.addFooter(to: menu, appName: "Battery Time", items: { sub in
-            sub.addItem(NSMenuItem(title: "Menu bar shows…", action: nil, keyEquivalent: ""))
-            self.addToggle(sub, title: "Battery icon", on: DisplayPrefs.showIcon) { DisplayPrefs.showIcon = $0 }
-            self.addToggle(sub, title: "Battery face", on: DisplayPrefs.showFace) { DisplayPrefs.showFace = $0 }
-            self.addToggle(sub, title: "Percentage", on: DisplayPrefs.showPct) { DisplayPrefs.showPct = $0 }
-            self.addToggle(sub, title: "Time remaining", on: DisplayPrefs.showTime) { DisplayPrefs.showTime = $0 }
-            sub.addItem(.separator())
-            self.addToggle(sub, title: "Animate Volta", on: DisplayPrefs.animateFace) { DisplayPrefs.animateFace = $0 }
-            if hasTemp {
-                sub.addItem(.separator())
-                let toC = DisplayPrefs.tempUnit == "C"
-                let item = NSMenuItem(title: toC ? "Switch to °F" : "Switch to °C",
-                                      action: #selector(self.toggleTempUnit), keyEquivalent: "")
-                item.target = self
-                sub.addItem(item)
-            }
-        })
+        // --- Preferences… (the window that replaced the Settings submenu) + Quit ---
+        menu.addItem(.separator())
+        let prefs = NSMenuItem(title: "Preferences…", action: #selector(openPreferences), keyEquivalent: ",")
+        prefs.target = self
+        menu.addItem(prefs)
+        let quit = NSMenuItem(title: "Quit Battery Time", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        quit.target = NSApp
+        menu.addItem(quit)
     }
 
     private func addModeItem(_ menu: NSMenu, value: Int, label: String, current: Int?, src: String) {
@@ -375,15 +372,6 @@ final class App: NSObject, NSApplicationDelegate {
         menu.addItem(item)
     }
 
-    /// A "Menu bar shows…" checkbox. Ticking it keeps the menu open and
-    /// redraws the menu-bar item straight away.
-    private func addToggle(_ menu: NSMenu, title: String, on: Bool, set: @escaping (Bool) -> Void) {
-        menu.addItem(ToggleMenuItem.make(title: title, isOn: on) { [weak self] on in
-            set(on)
-            self?.rerender()
-        })
-    }
-
     // MARK: Menu actions
 
     @objc private func setPowerMode(_ sender: NSMenuItem) {
@@ -392,11 +380,12 @@ final class App: NSObject, NSApplicationDelegate {
         poll()
     }
 
-    @objc private func toggleTempUnit() {
-        DisplayPrefs.tempUnit = DisplayPrefs.tempUnit == "C" ? "F" : "C"
-        poll()
+    @objc private func openPreferences() {
+        if preferences == nil {
+            preferences = PreferencesWindowController(model: PreferencesModel { [weak self] in self?.rerender() })
+        }
+        preferences?.show()
     }
-
 
     private func rerender() { if let s = latest { render(s) } }
 
@@ -421,10 +410,17 @@ final class App: NSObject, NSApplicationDelegate {
     }
 
     @objc private func showTips(_ sender: NSMenuItem) {
-        guard let tips = sender.representedObject as? [String] else { return }
+        guard let kinds = sender.representedObject as? [String], let snap = latest else { return }
+        let usage = snap.usage ?? Usage24h(batterySeconds: 0, acSeconds: 0,
+                                           minCharge: nil, highACSeconds: 0, lowEpisodes: 0)
+        let tips = batteryTipList(usage: usage, temperatureCentiC: snap.ioreg.temperatureCentiC,
+                                  cycleCount: snap.ioreg.cycleCount)
+            .filter { kinds.contains($0.kind.rawValue) }
+        guard !tips.isEmpty else { return }
+        TipsSeen.value = markTipsShown(tips, seen: TipsSeen.value)
         let alert = NSAlert()
         alert.messageText = "Battery Life Tips"
-        alert.informativeText = tips.map { "💡 \($0)" }.joined(separator: "\n\n")
+        alert.informativeText = tips.map { "💡 \($0.text)" }.joined(separator: "\n\n")
         alert.alertStyle = .informational
         alert.runModal()
     }
