@@ -8,6 +8,10 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.19.1] - 2026-11-02
+
+- The battery level indicator now remains visible in grey when the monitor is offline or permissions are missing, instead of disappearing entirely.
+
 ## [1.19.0] - 2026-11-02
 
 - No user-visible changes.
