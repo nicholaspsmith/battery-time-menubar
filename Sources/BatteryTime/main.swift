@@ -328,24 +328,6 @@ final class App: NSObject, NSApplicationDelegate {
         }
         FoldingSection.add(title: "Battery Stats", key: "batteryStats", items: stats, to: menu)
 
-        // --- Battery Life Tips (only when a trigger fires) ---
-        let tipsUsage = snap.usage ?? Usage24h(batterySeconds: 0, acSeconds: 0,
-                                               minCharge: nil, highACSeconds: 0, lowEpisodes: 0)
-        let firing = batteryTipList(usage: tipsUsage,
-                                    temperatureCentiC: io.temperatureCentiC,
-                                    cycleCount: io.cycleCount)
-        // A tip retires after its third showing; it is new again once its
-        // condition has cleared. Only prune once the 24 h usage is known.
-        if snap.usage != nil { TipsSeen.value = pruneSeenTips(TipsSeen.value, firing: firing) }
-        let tips = freshTips(firing, seen: TipsSeen.value)
-        if !tips.isEmpty {
-            menu.addItem(.separator())
-            let item = NSMenuItem(title: "Battery Life Tips…", action: #selector(showTips(_:)), keyEquivalent: "")
-            item.target = self
-            item.representedObject = tips.map(\.kind.rawValue)
-            menu.addItem(item)
-        }
-
         // --- Open Battery Settings ---
         menu.addItem(.separator())
         let settings = NSMenuItem(title: "Open Battery Settings…", action: #selector(openSettings), keyEquivalent: "")
@@ -407,22 +389,6 @@ final class App: NSObject, NSApplicationDelegate {
 
     @objc private func openSettings() {
         _ = Shell.run(kOpen, [kSettingsURL])
-    }
-
-    @objc private func showTips(_ sender: NSMenuItem) {
-        guard let kinds = sender.representedObject as? [String], let snap = latest else { return }
-        let usage = snap.usage ?? Usage24h(batterySeconds: 0, acSeconds: 0,
-                                           minCharge: nil, highACSeconds: 0, lowEpisodes: 0)
-        let tips = batteryTipList(usage: usage, temperatureCentiC: snap.ioreg.temperatureCentiC,
-                                  cycleCount: snap.ioreg.cycleCount)
-            .filter { kinds.contains($0.kind.rawValue) }
-        guard !tips.isEmpty else { return }
-        TipsSeen.value = markTipsShown(tips, seen: TipsSeen.value)
-        let alert = NSAlert()
-        alert.messageText = "Battery Life Tips"
-        alert.informativeText = tips.map { "💡 \($0.text)" }.joined(separator: "\n\n")
-        alert.alertStyle = .informational
-        alert.runModal()
     }
 
     // MARK: Dropdown helpers

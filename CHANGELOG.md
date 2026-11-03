@@ -8,6 +8,10 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.22.0] - 2026-11-03
+
+- Removed Battery Life Tips. In practice it only ever repeated the same low-charge advice; the other tips (running hot, hours at full charge, a high cycle count) rarely apply.
+
 ## [1.21.0] - 2026-11-03
 
 - Picking an Energy Mode now leaves the menu open, with the tick moving to your choice (or staying put if macOS refuses the change).
