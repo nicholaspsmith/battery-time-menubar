@@ -18,6 +18,13 @@ public func healthPercentExact(rawMax: Int?, design: Int?) -> Double? {
     return min(100, Double(m) * 100 / Double(d))
 }
 
+public func hhmmToMinutes(_ hmm: String) -> Int {
+    let parts = hmm.split(separator: ":")
+    let h = parts.count > 0 ? Int(parts[0]) ?? 0 : 0
+    let m = parts.count > 1 ? Int(parts[1]) ?? 0 : 0
+    return h * 60 + m
+}
+
 public func humanize(_ hmm: String) -> String {
     let parts = hmm.split(separator: ":")
     let h = parts.count > 0 ? Int(parts[0]) ?? 0 : 0
@@ -56,4 +63,12 @@ public func etaStopgapMinutes(rawCurrent: Int, voltageMV: Int?, instantAmperageR
     case let (nil, n?): return n
     default: return nil
     }
+}
+
+/// Time to full (minutes) from the measured charge current, for when macOS has
+/// no estimate. nil unless the battery is taking charge.
+public func chargeMinutes(rawCurrent: Int?, rawMax: Int?, instantAmperageRaw: String?) -> Int? {
+    guard let cur = rawCurrent, let mx = rawMax, mx > cur,
+          let raw = instantAmperageRaw, let amps = Int(raw), amps > 0 else { return nil }
+    return (mx - cur) * 60 / amps
 }

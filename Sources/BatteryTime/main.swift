@@ -22,7 +22,8 @@ private struct Snapshot {
     var reading: BatteryReading
     var ioreg: IORegBattery
     var powermode: Int?          // 0 Automatic, 1 Low, 2 High
-    var mbTime: String           // menu-bar time string ("1:46", "19h", "--:--", or "")
+    var mbTime: String           // menu-bar time string ("1:46", "19h", or "")
+    var clock: Bool              // the spinning clock stands in for the time
     var human: String?           // humanized time for the dropdown detail line
     var statusText: String       // "On battery", "Charging", ...
     var usage: Usage24h?
@@ -60,10 +61,12 @@ final class App: NSObject, NSApplicationDelegate {
                                   at: ProcessInfo.processInfo.systemUptime)
     /// When the current sip loop began; nil while he isn't drinking.
     private var sipStarted: Date?
+    /// When the clock's hands began turning; nil while they aren't.
+    private var clockStarted: TimeInterval?
     private var displayAsleep = false
     private var sessionActive = true
     private var latest: Snapshot?
-    private lazy var preferences = makePreferences { [weak self] in self?.rerender() }
+    private lazy var preferences = makePreferences { [weak self] in self?.refreshNow() }
 
     // 24h cache: recomputed off the poll thread, at most every 10 min.
     private var usage24h: Usage24h?
@@ -79,6 +82,8 @@ final class App: NSObject, NSApplicationDelegate {
     private let pollQueue = DispatchQueue(label: "com.nicholaspsmith.BatteryTime.poll")
     private var pollInFlight = false
     private var pollPending = false
+    /// Only touched on `pollQueue`.
+    private var timeTracker = TimeTracker()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         controller = StatusItemController(
@@ -143,34 +148,17 @@ final class App: NSObject, NSApplicationDelegate {
             let ioreg = parseIORegBattery(ioregRaw)
             let powermode = parsePowermode(pmRaw)
 
-            // --- ETA (mirrors plugin 63-121) ---
+            let own = ownMinutes(reading, ioreg)
+            var display = self.timeTracker.update(reading, own: own, at: ProcessInfo.processInfo.systemUptime)
+            if !DisplayPrefs.showClock { display = display.withoutClock(own: own) }
             var time = ""
-            switch reading.state {
-            case .discharging:
-                if let raw = reading.rawTime {
-                    // 95% of macOS's estimate (it runs a little optimistic)
-                    let mins = (hhmmToMinutes(raw) * 95) / 100
-                    time = minutesToHHMM(mins)
-                }
-            case .charging:
-                if let raw = reading.rawTime { time = raw }
-            default:
-                break
-            }
-            // stop-gap right after unplug, before macOS has its own estimate
-            if !reading.plugged, time.isEmpty, let rawCur = ioreg.rawCurrentCapacity {
-                if let emins = etaStopgapMinutes(rawCurrent: rawCur, voltageMV: ioreg.voltageMV,
-                                                 instantAmperageRaw: ioreg.instantAmperageRaw) {
-                    time = minutesToHHMM(emins)
-                }
-            }
+            if case .minutes(let mins) = display { time = minutesToHHMM(mins) }
 
             // humanized for the dropdown
             let human: String? = time.isEmpty ? nil : humanize(time)
 
-            // menu-bar time: plugged -> time (may be empty); else time or "--:--".
             // whole hours render compactly ("19:00" -> "19h").
-            var mbTime = reading.plugged ? time : (time.isEmpty ? "--:--" : time)
+            var mbTime = time
             if mbTime.hasSuffix(":00") {
                 mbTime = String(mbTime.dropLast(3)) + "h"
             }
@@ -178,7 +166,7 @@ final class App: NSObject, NSApplicationDelegate {
             let statusText = statusLabel(reading)
 
             var snap = Snapshot(reading: reading, ioreg: ioreg, powermode: powermode,
-                                mbTime: mbTime, human: human, statusText: statusText,
+                                mbTime: mbTime, clock: display == .clock, human: human, statusText: statusText,
                                 usage: nil)
             DispatchQueue.main.async {
                 self.pollInFlight = false
@@ -211,23 +199,32 @@ final class App: NSObject, NSApplicationDelegate {
         let leadTxt = (showPct && pct != nil) ? "\(pct!)%" : ""
         let timeTxt = (showTime && !snap.mbTime.isEmpty) ? snap.mbTime : ""
 
+        let now = ProcessInfo.processInfo.systemUptime
+        let clockShown = showTime && snap.clock
+        let clockSpinning = clockShown && clockMaySpin(reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
+                                                       displayAsleep: displayAsleep, sessionActive: sessionActive)
+        if clockSpinning { if clockStarted == nil { clockStarted = now } } else { clockStarted = nil }
+        let clock: CGFloat? = clockShown
+            ? clockStarted.map { CGFloat(clockTurns(elapsed: now - $0)) } ?? BatteryGlyph.stillClockTurns
+            : nil
+
+        // Opaque, appearance-resolving ink: a dynamic NSColor whose provider runs
+        // at DRAW time under the menu bar's real appearance (white in dark, black
+        // in light). That makes the glyph adapt like a template — including the
+        // fullscreen-reveal dark bar — WITHOUT sampling effectiveAppearance (which
+        // oscillates during the reveal). It must be fully opaque: labelColor is
+        // only ~85% alpha, which renders the template glyph translucent/grey
+        // instead of the solid menu-bar colour the other icons use.
+        let ink = NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? .white : .black
+        }
+
         // glyph shown when the icon toggle is on and we have a percentage
         let glyph = showIcon && pct != nil
 
         if glyph {
-            // Opaque, appearance-resolving ink: a dynamic NSColor whose provider runs
-            // at DRAW time under the menu bar's real appearance (white in dark, black
-            // in light). That makes the glyph adapt like a template — including the
-            // fullscreen-reveal dark bar — WITHOUT sampling effectiveAppearance (which
-            // oscillates during the reveal). It must be fully opaque: labelColor is
-            // only ~85% alpha, which renders the template glyph translucent/grey
-            // instead of the solid menu-bar colour the other icons use.
-            let ink = NSColor(name: nil) { appearance in
-                appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? .white : .black
-            }
             let face = DisplayPrefs.showFace
             let stuffed = face && snap.reading.plugged && !isCharging
-            let now = ProcessInfo.processInfo.systemUptime
             let moving = voltaMayMove(faceShown: face,
                                       reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
                                       displayAsleep: displayAsleep, sessionActive: sessionActive)
@@ -252,20 +249,24 @@ final class App: NSObject, NSApplicationDelegate {
                 // The blink takes the first half second of the minute's turn.
                 blink: stuffed ? nil : minuteT.flatMap { $0 < 0.5 ? CGFloat($0 / 0.5) : nil },
                 age: BatteryGlyph.age(health: healthPercentExact(rawMax: snap.ioreg.rawMaxCapacity, design: snap.ioreg.designCapacity)),
-                idle: idling ? BatteryGlyph.Idle(idle.pose(at: now)) : .still
+                idle: idling ? BatteryGlyph.Idle(idle.pose(at: now)) : .still,
+                clock: clock
             )
             controller.setIcon(image)
             scheduleAnimation(after: animationDelay(idleTick: idling ? idle.nextTick(after: now) : nil,
-                                                    drinking: drinking))
+                                                    looping: drinking || clockSpinning))
         } else {
             // text fallback: % (stands in for the glyph) then time
             var parts: [String] = []
             if let p = pct, showPct || showIcon { parts.append("\(p)%") }
             if showTime, !snap.mbTime.isEmpty { parts.append(snap.mbTime) }
-            let text = parts.isEmpty ? "--:--" : parts.joined(separator: " ")
             sipStarted = nil
-            scheduleAnimation(after: nil)
-            controller.setTitle(text, warn: false)
+            scheduleAnimation(after: animationDelay(idleTick: nil, looping: clockSpinning))
+            if let clock {
+                controller.setIcon(BatteryGlyph.clockImage(lead: parts.joined(separator: " "), turns: clock, ink: ink))
+            } else {
+                controller.setTitle(parts.isEmpty ? "--:--" : parts.joined(separator: " "), warn: false)
+            }
         }
     }
 
@@ -397,7 +398,7 @@ final class App: NSObject, NSApplicationDelegate {
         if snap.reading.plugged {
             if snap.reading.state == .charging {
                 if let h = snap.human { return "Charging - \(h) until full" }
-                return "Charging"
+                return "Charging (estimating...)"
             }
             return snap.statusText
         } else {
@@ -502,13 +503,6 @@ private func parsePowermode(_ raw: String) -> Int? {
         }
     }
     return nil
-}
-
-private func hhmmToMinutes(_ hmm: String) -> Int {
-    let parts = hmm.split(separator: ":")
-    let h = parts.count > 0 ? Int(parts[0]) ?? 0 : 0
-    let m = parts.count > 1 ? Int(parts[1]) ?? 0 : 0
-    return h * 60 + m
 }
 
 private func minutesToHHMM(_ mins: Int) -> String {

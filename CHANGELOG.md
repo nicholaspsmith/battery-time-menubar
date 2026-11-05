@@ -8,6 +8,14 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.24.0] - 2026-11-05
+
+- After you plug in or unplug, an analog clock takes the time's place until macOS has worked out the real time to full or empty, its hands spinning backwards like a watch being wound. Under Reduce Motion its hands stay still.
+- Preferences ▸ Menu Bar Shows ▸ Clock while estimating turns the clock off; Battery Time's own estimate then shows from the start.
+- On battery or charging, the menu bar now always shows a time or the clock, never `--:--` or a blank. If macOS has no estimate, Battery Time works out its own, including a new time to full.
+- The final stretch of charging ("finishing charge") now counts as charging, so it shows a time to full and Volta keeps sipping.
+- Battery Stats says "Charging (estimating...)" while the time to full isn't ready.
+
 ## [1.23.3] - 2026-11-03
 
 - Updated StatusItemKit to 0.38.4
