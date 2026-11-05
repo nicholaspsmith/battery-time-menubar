@@ -119,7 +119,8 @@ Time details:
     and never blocks a refresh
 - **Open Battery Settings…** — opens System Settings ▸ Battery
 - **Preferences…** (⌘,) — StatusItemKit's shared Preferences window, as in Mac Daddy: Menu Bar Shows (Battery
-  icon, Battery face, Percentage, Time remaining), Animate Volta, Temperature
+  icon, Battery face, Percentage, Time remaining, Clock while
+  estimating), Animate Volta, Temperature
   (°C / °F), Start at Login, and the version. Esc or ⌘W closes it
 - **Quit Battery Time** (⌘Q)
 
