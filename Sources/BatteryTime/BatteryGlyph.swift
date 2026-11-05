@@ -15,8 +15,9 @@ public enum BatteryFill {
 /// The menu-bar battery glyph, ported from `render-title.swift`. Composes
 /// left-to-right: an optional lead text (e.g. "82%"), the rounded battery body
 /// + nub with a fill proportional to charge (bisected by a bolt cutout while
-/// charging), then an optional trailing text (e.g. the time). Drawn straight
-/// into an NSImage — no PNG/base64 round-trip.
+/// charging), then an optional trailing text (e.g. the time) or the spinning
+/// clock that stands in for it. Drawn straight into an NSImage — no PNG/base64
+/// round-trip.
 ///
 /// With a face the battery is Volta: on battery his mouth follows the charge;
 /// charging he fills green and drinks through a straw; plugged in but not
@@ -64,6 +65,11 @@ public enum BatteryGlyph {
         public static let still = Idle()
     }
 
+    /// The clock's height and width: the height of the digits it stands in for.
+    public static let clockSize: CGFloat = 11
+    /// Where the clock's hands rest when they can't move: ten past ten.
+    public static let stillClockTurns: CGFloat = 10 + 10.0 / 60
+
     public static func image(
         pct: Int,
         charging: Bool,
@@ -78,7 +84,8 @@ public enum BatteryGlyph {
         burp: CGFloat? = nil,
         blink: CGFloat? = nil,
         age: CGFloat = 0,
-        idle: Idle = .still
+        idle: Idle = .still,
+        clock: CGFloat? = nil
     ) -> NSImage {
         // Animation inputs, each nil when still:
         // - sip: 0..<1 through one sip while charging (`sipPeriod`: the charge
@@ -91,6 +98,8 @@ public enum BatteryGlyph {
         // - age: 0...1, how worn the battery is (`BatteryGlyph.age(health:)`).
         //   He wrinkles, goes grandpa, cracks, leaks and falls apart.
         // - idle: what his idle has him doing (`Idle`); `.still` when off.
+        // - clock: turns of the clock's minute hand, nil for no clock. Shown
+        //   in place of `trailing`; constant while it isn't spinning.
         let batteryPct = max(0, min(100, pct))
         let greenFill = face && charging && fillKind == .none
         let drinking = face && charging
@@ -125,9 +134,11 @@ public enum BatteryGlyph {
         func attr(_ s: String) -> NSAttributedString {
             NSAttributedString(string: s, attributes: [.font: font, .foregroundColor: ink])
         }
+        let trailing = clock == nil ? trailing : ""
         let leadStr = attr(lead), textStr = attr(trailing)
         let leadSize = lead.isEmpty ? NSSize.zero : leadStr.size()
         let textSize = trailing.isEmpty ? NSSize.zero : textStr.size()
+        let trailW = clock == nil ? textSize.width : clockSize
         let fontH = ceil(font.ascender - font.descender)
 
         // battery glyph metrics (points). With a face the battery grows to use
@@ -144,8 +155,8 @@ public enum BatteryGlyph {
         let nubPad: CGFloat = falling > 0 ? 5 : 0
         let glyphW: CGFloat = bodyW + nubW + glowPad * 2 + nubPad
         let leadGap: CGFloat = (!lead.isEmpty && glyphW > 0) ? gap : 0
-        let trailGap: CGFloat = (!trailing.isEmpty && (glyphW > 0 || !lead.isEmpty)) ? gap : 0
-        let width = max(1, ceil(leadSize.width + leadGap + glyphW + trailGap + textSize.width))
+        let trailGap: CGFloat = (trailW > 0 && (glyphW > 0 || !lead.isEmpty)) ? gap : 0
+        let width = max(1, ceil(leadSize.width + leadGap + glyphW + trailGap + trailW))
         let height = max(1, ceil(max(fontH, leadSize.height, textSize.height, bodyH, (drinking || stuffed || dripping > 0) ? 22 : 0)))
 
         func knockout(_ block: () -> Void, clip: NSRect? = nil) {
@@ -648,6 +659,10 @@ public enum BatteryGlyph {
             if !trailing.isEmpty {
                 textStr.draw(at: NSPoint(x: x, y: (height - textSize.height)/2))
             }
+            if let clock {
+                drawClock(in: NSRect(x: width - clockSize, y: (height - clockSize) / 2,
+                                     width: clockSize, height: clockSize), turns: clock, ink: ink)
+            }
             return true
         }
 
@@ -655,6 +670,49 @@ public enum BatteryGlyph {
         // those are never templates
         img.isTemplate = (fillKind == .none) && !greenFill && !stuffed
         return img
+    }
+
+    /// The clock on its own, for when the battery icon is off: an optional lead
+    /// text (e.g. "82%") in the status item's title font, then the clock.
+    public static func clockImage(lead: String, turns: CGFloat, ink: NSColor) -> NSImage {
+        let str = NSAttributedString(string: lead, attributes: [
+            .font: NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .regular), .foregroundColor: ink,
+        ])
+        let size = lead.isEmpty ? NSSize.zero : str.size()
+        let width = ceil(size.width + (lead.isEmpty ? 0 : 4) + clockSize)
+        let height = ceil(max(size.height, clockSize))
+        let img = NSImage(size: NSSize(width: width, height: height), flipped: false) { _ in
+            str.draw(at: NSPoint(x: 0, y: (height - size.height) / 2))
+            drawClock(in: NSRect(x: width - clockSize, y: (height - clockSize) / 2,
+                                 width: clockSize, height: clockSize), turns: turns, ink: ink)
+            return true
+        }
+        img.isTemplate = true
+        return img
+    }
+
+    /// An analog clock filling `rect`, its minute hand `turns` turns past 12
+    /// and its hour hand a twelfth of that. Lines run heavy for the size so
+    /// the hands still read at 11pt.
+    private static func drawClock(in rect: NSRect, turns: CGFloat, ink: NSColor) {
+        let unit = rect.width / 100
+        let c = NSPoint(x: rect.midX, y: rect.midY)
+        ink.set()
+        // Inset by half the line, so the ring's outside edge fills `rect`.
+        let ring = NSBezierPath(ovalIn: rect.insetBy(dx: 4.5 * unit, dy: 4.5 * unit))
+        ring.lineWidth = 9 * unit
+        ring.stroke()
+        func hand(turns: CGFloat, length: CGFloat, width: CGFloat) {
+            let a = turns * 2 * .pi
+            let p = NSBezierPath()
+            p.move(to: c)
+            p.line(to: NSPoint(x: c.x + sin(a) * length * unit, y: c.y + cos(a) * length * unit))
+            p.lineWidth = width * unit
+            p.lineCapStyle = .round
+            p.stroke()
+        }
+        hand(turns: turns / 12, length: 20, width: 10)
+        hand(turns: turns, length: 33, width: 8)
     }
 
     /// One sip, in seconds: the charge climbs the straw (1.2 s), the straw

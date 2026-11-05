@@ -20,11 +20,23 @@ public func voltaMayMove(faceShown: Bool, reduceMotion: Bool, displayAsleep: Boo
     faceShown && !reduceMotion && !displayAsleep && sessionActive
 }
 
-/// How long until Volta next needs drawing: the idle's next tick (nil when
-/// the idle is off) or, while he drinks, the sip loop's 1/12 s, whichever is
+/// Whether the clock's hands may turn: Reduce Motion is off and someone could
+/// be looking. Unlike Volta, it doesn't need his face.
+public func clockMaySpin(reduceMotion: Bool, displayAsleep: Bool, sessionActive: Bool) -> Bool {
+    !reduceMotion && !displayAsleep && sessionActive
+}
+
+/// Turns of the clock's minute hand `elapsed` seconds after it began: one turn
+/// every 2 s, backwards, like a watch being wound.
+public func clockTurns(elapsed: TimeInterval) -> Double {
+    -elapsed / 2
+}
+
+/// How long until the glyph next needs drawing: the idle's next tick (nil when
+/// the idle is off) or, while the sip or the clock loops, 1/12 s, whichever is
 /// sooner. Nil when nothing moves.
-public func animationDelay(idleTick: TimeInterval?, drinking: Bool) -> TimeInterval? {
-    [idleTick, drinking ? 1.0 / 12 : nil].compactMap { $0 }.min()
+public func animationDelay(idleTick: TimeInterval?, looping: Bool) -> TimeInterval? {
+    [idleTick, looping ? 1.0 / 12 : nil].compactMap { $0 }.min()
 }
 
 /// How late Volta's timer may fire. macOS fires a timer at the far end of its

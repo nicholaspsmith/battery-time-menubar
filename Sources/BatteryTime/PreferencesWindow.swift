@@ -16,6 +16,7 @@ final class PreferencesModel: ObservableObject {
     @Published var showFace = DisplayPrefs.showFace { didSet { DisplayPrefs.showFace = showFace; onChange() } }
     @Published var showPct = DisplayPrefs.showPct { didSet { DisplayPrefs.showPct = showPct; onChange() } }
     @Published var showTime = DisplayPrefs.showTime { didSet { DisplayPrefs.showTime = showTime; onChange() } }
+    @Published var showClock = DisplayPrefs.showClock { didSet { DisplayPrefs.showClock = showClock; onChange() } }
     @Published var animateFace = DisplayPrefs.animateFace { didSet { DisplayPrefs.animateFace = animateFace; onChange() } }
     @Published var tempUnit = DisplayPrefs.tempUnit { didSet { DisplayPrefs.tempUnit = tempUnit; onChange() } }
 
@@ -43,6 +44,7 @@ struct PreferencesView: View {
                 Toggle("Battery face", isOn: $model.showFace).disabled(!model.showIcon)
                 Toggle("Percentage", isOn: $model.showPct)
                 Toggle("Time remaining", isOn: $model.showTime)
+                Toggle("Clock while estimating", isOn: $model.showClock).disabled(!model.showTime)
             }
             Section {
                 Toggle("Animate Volta", isOn: $model.animateFace).disabled(!model.showIcon || !model.showFace)

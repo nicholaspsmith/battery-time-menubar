@@ -24,7 +24,7 @@ public func parsePmsetBatt(_ raw: String) -> BatteryReading {
     let state: PowerState
     if line.contains("discharging") { state = .discharging }
     else if line.contains("not charging") { state = .notCharging }
-    else if line.contains("charging") { state = .charging }
+    else if line.contains("finishing charge") || line.contains("charging") { state = .charging }
     else if line.contains("charged") { state = .charged }
     else { state = .pluggedOther }
 

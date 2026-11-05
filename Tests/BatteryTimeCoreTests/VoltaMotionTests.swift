@@ -20,7 +20,7 @@ final class VoltaMotionTests: XCTestCase {
         XCTAssertFalse(voltaMayMove(faceShown: false, reduceMotion: false, displayAsleep: false, sessionActive: true))
         XCTAssertFalse(voltaMayMove(faceShown: true, reduceMotion: false, displayAsleep: true, sessionActive: true))
         XCTAssertFalse(voltaMayMove(faceShown: true, reduceMotion: false, displayAsleep: false, sessionActive: false))
-        XCTAssertNil(animationDelay(idleTick: nil, drinking: false))
+        XCTAssertNil(animationDelay(idleTick: nil, looping: false))
     }
 
     func testReduceMotionStillsHim() {
@@ -28,13 +28,13 @@ final class VoltaMotionTests: XCTestCase {
     }
 
     func testSipLoopRunsWithoutTheIdle() {
-        XCTAssertEqual(animationDelay(idleTick: nil, drinking: true), 1.0 / 12)
+        XCTAssertEqual(animationDelay(idleTick: nil, looping: true), 1.0 / 12)
     }
 
     func testTheSoonerOfIdleAndSipWins() {
-        XCTAssertEqual(animationDelay(idleTick: 0.25, drinking: false), 0.25)
-        XCTAssertEqual(animationDelay(idleTick: 0.25, drinking: true), 1.0 / 12)
-        XCTAssertEqual(animationDelay(idleTick: 1.0 / 15, drinking: true), 1.0 / 15)
+        XCTAssertEqual(animationDelay(idleTick: 0.25, looping: false), 0.25)
+        XCTAssertEqual(animationDelay(idleTick: 0.25, looping: true), 1.0 / 12)
+        XCTAssertEqual(animationDelay(idleTick: 1.0 / 15, looping: true), 1.0 / 15)
     }
 
     func testTimersFireNearlyOnTime() {
@@ -50,5 +50,27 @@ final class VoltaMotionTests: XCTestCase {
         XCTAssertFalse(minuteCueMayPlay(faceShown: true, iconShown: true, charging: true, displayAsleep: false, sessionActive: true))
         XCTAssertFalse(minuteCueMayPlay(faceShown: false, iconShown: true, charging: false, displayAsleep: false, sessionActive: true))
         XCTAssertFalse(minuteCueMayPlay(faceShown: true, iconShown: false, charging: false, displayAsleep: false, sessionActive: true))
+    }
+
+    func testTheClockSpinsWhileSomeoneCouldBeLooking() {
+        XCTAssertTrue(clockMaySpin(reduceMotion: false, displayAsleep: false, sessionActive: true))
+    }
+
+    func testTheClockStopsForReduceMotion() {
+        XCTAssertFalse(clockMaySpin(reduceMotion: true, displayAsleep: false, sessionActive: true))
+    }
+
+    func testTheClockStopsWhileTheDisplaySleeps() {
+        XCTAssertFalse(clockMaySpin(reduceMotion: false, displayAsleep: true, sessionActive: true))
+    }
+
+    func testTheClockStopsWhileAnotherUserHasTheSession() {
+        XCTAssertFalse(clockMaySpin(reduceMotion: false, displayAsleep: false, sessionActive: false))
+    }
+
+    func testTheClockRunsBackwardsLikeAWatchBeingWound() {
+        XCTAssertEqual(clockTurns(elapsed: 0), 0)
+        XCTAssertEqual(clockTurns(elapsed: 2), -1)
+        XCTAssertEqual(clockTurns(elapsed: 0.5), -0.25)
     }
 }

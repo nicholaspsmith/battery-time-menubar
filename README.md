@@ -4,7 +4,7 @@
 
 <p align="center"><img src="docs/animation.png" alt="Volta blinking while his charge sloshes, drinking through a bendy straw while charging, and burping when full"></p>
 
-**Version 1.23.3** · [Changelog](https://github.com/nicholaspsmith/battery-time-menubar/releases)
+**Version 1.24.0** · [Changelog](https://github.com/nicholaspsmith/battery-time-menubar/releases)
 
 A standalone macOS menu-bar app ("Battery Time.app", built on
 [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit)) that puts the
@@ -85,9 +85,17 @@ of his motion stops when Reduce Motion is on.
 Time details:
 
 - The on-battery time is 95% of macOS's estimate, which runs a little optimistic.
-- For the 30–60 s after unplugging, before macOS has an estimate, the app
-  projects its own from the measured draw, capped at a nominal ~12 W so a
-  near-idle draw cannot show 20h+. Without either, it shows `--:--`.
+- After you plug in or unplug, an analog clock takes the time's place until
+  macOS has a time for the new direction, about 2 minutes after unplugging: the
+  battery reports only once a minute, and macOS skips its first report. The
+  hands spin backwards, like a watch being wound, and rest at ten past ten under
+  Reduce Motion. Preferences ▸ Clock while estimating turns it off, and the app's
+  own estimate shows from the start instead.
+- If macOS has no estimate at any other time, or still has none 3 minutes after
+  the plug changed, the app works out its own. On battery that's the measured
+  draw, capped at a nominal ~12 W so a near-idle draw cannot show 20h+; charging
+  it's the measured charge current. With nothing to measure, the clock stays.
+- Plugged in and not charging, there's no time to show, so the spot stays empty.
 - Whole hours render compactly as `8h`.
 - The icon, percentage and time toggle independently (Preferences ▸ Menu Bar Shows). With
   the icon off it shows plain text (`pct% time`). It always shows something, so

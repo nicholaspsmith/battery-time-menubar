@@ -18,6 +18,7 @@ enum DisplayPrefs {
     private static let kTempUnit = "tempUnit"
     private static let kShowFace = "showFace"
     private static let kAnimateFace = "animateFace"
+    private static let kShowClock = "showClock"
 
     /// Reads a bool flag that defaults to `fallback` when never set.
     private static func boolOr(_ key: String, _ fallback: Bool) -> Bool {
@@ -46,6 +47,13 @@ enum DisplayPrefs {
     static var showTime: Bool {
         get { boolOr(kShowTime, true) }
         set { defaults.set(newValue, forKey: kShowTime) }
+    }
+
+    /// The spinning clock while the time isn't ready. Off, our own estimate
+    /// shows from the start instead, or nothing if we can't make one.
+    static var showClock: Bool {
+        get { boolOr(kShowClock, true) }
+        set { defaults.set(newValue, forKey: kShowClock) }
     }
 
     /// "C" or "F"; defaults to "C".
